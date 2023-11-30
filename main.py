@@ -19,7 +19,7 @@ def calculate_pi_execution_time(n):
 
 def calculate_single_core_score(n, execution_time):
     single_core_score = (n / execution_time) / 2
-    return single_core_score
+    return round(single_core_score)
 
 def main():
     n = int(input("Enter the number of iterations: "))
