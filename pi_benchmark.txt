@@ -1,0 +1,3 @@
+CPU Model | Single Core Score | Multi Core Score
+i7-13700K | 2670              |
+i3-8100   | 926               |
