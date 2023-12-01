@@ -20,5 +20,16 @@
         "efficiency": 0.885,
         "cpu_utilization": 88.435,
         "number_of_cpus_tested": 2
+    },
+    {
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "execution_time_single_core": 79.20958232879639,
+        "execution_time_multi_core": 64.49758434295654,
+        "single_core_score": 758,
+        "multi_core_score": 930,
+        "speedup": 1.23,
+        "efficiency": 0.61,
+        "cpu_utilization": 61.41,
+        "number_of_cpus_tested": 1
     }
 ]
