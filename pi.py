@@ -49,11 +49,11 @@ def display_data_in_txt():
             cpu_model = data["cpu_model"]
             execution_time_single_core = data["execution_time_single_core"]
             execution_time_multi_core = data["execution_time_multi_core"]
-            single_core_score = data["single_core_score"]
-            multi_core_score = data["multi_core_score"]
-            speedup = data["speedup"]
-            efficiency = data["efficiency"]
-            cpu_utilization = data["cpu_utilization"]
+            single_core_score = round(data["single_core_score"])
+            multi_core_score = round(data["multi_core_score"])
+            speedup = round(data["speedup"], 2)
+            efficiency = round(data["efficiency"], 2)
+            cpu_utilization = round(data["cpu_utilization"], 2)
             file.write(f"{cpu_model:<41}| {execution_time_single_core:<29}| {execution_time_multi_core:<28}| {single_core_score:<18}| {multi_core_score:<17}| {speedup:<8}| {efficiency:<11}| {cpu_utilization}%\n")
             
 def save_data_to_json():
