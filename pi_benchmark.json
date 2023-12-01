@@ -1,0 +1,13 @@
+[
+    {
+        "cpu_model": "13th Gen Intel(R) Core(TM) i7-13700K",
+        "execution_time_single_core": 23.271010160446167,
+        "execution_time_multi_core": 2.180366277694702,
+        "single_core_score": 2579,
+        "multi_core_score": 27521,
+        "speedup": 10.67,
+        "efficiency": 0.44,
+        "cpu_utilization": 44.47,
+        "number_of_cpus_tested": 1
+    }
+]
