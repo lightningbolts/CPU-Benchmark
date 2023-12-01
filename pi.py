@@ -53,8 +53,8 @@ def display_data_in_txt():
             speedup = data["speedup"]
             efficiency = data["efficiency"]
             cpu_utilization = data["cpu_utilization"]
-            file.write(f"{cpu_model:<41}| {execution_time_single_core:<29}| {execution_time_multi_core:<28}| {calculate_multi_core_score(digits, execution_time_single_core):<18}| {calculate_multi_core_score(digits, execution_time_multi_core):<17}| {round(execution_time_single_core / execution_time_multi_core, 2):<8}| {round((execution_time_single_core / execution_time_multi_core) / processes, 2):<11}| {round(((execution_time_single_core / execution_time_multi_core) / processes) * 100, 2)}%\n")
-
+            file.write(f"{cpu_model:<40}| {execution_time_single_core:<28}| {execution_time_multi_core:<27}| {single_core_score:<18}| {multi_core_score:<17}| {speedup:<8}| {efficiency:<11}| {cpu_utilization}%\n")
+            
 def save_data_to_json():
     with open("pi_benchmark.json", "w") as file:
         json.dump(pi_benchmark_data, file, indent=4)
