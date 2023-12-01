@@ -1,3 +1,4 @@
 CPU Model                                | Execution time (single core) | Execution time (multi core) | Single core score | Multi core score | Speedup | Efficiency | CPU utilization
 
-13th Gen Intel(R) Core(TM) i7-13700K     | 23.271010160446167           | 2.180366277694702           | 2579              | 27521            | 10.67   | 0.44       | 44.47%
+13th Gen Intel(R) Core(TM) i7-13700K    | 23.271010160446167          | 2.180366277694702          | 2579              | 27521            | 10.67   | 0.44       | 44.47%
+Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz | 84.14552116394043           | 23.30997085571289          | 713               | 2574             | 3.61    | 0.9        | 90.25%

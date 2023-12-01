@@ -9,5 +9,16 @@
         "efficiency": 0.44,
         "cpu_utilization": 44.47,
         "number_of_cpus_tested": 1
+    },
+    {
+        "cpu_model": "Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz",
+        "execution_time_single_core": 84.14552116394043,
+        "execution_time_multi_core": 23.30997085571289,
+        "single_core_score": 713,
+        "multi_core_score": 2574,
+        "speedup": 3.61,
+        "efficiency": 0.9,
+        "cpu_utilization": 90.25,
+        "number_of_cpus_tested": 1
     }
 ]
