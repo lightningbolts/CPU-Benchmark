@@ -12,13 +12,13 @@
     },
     {
         "cpu_model": "Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz",
-        "execution_time_single_core": 84.14552116394043,
-        "execution_time_multi_core": 23.30997085571289,
-        "single_core_score": 713,
-        "multi_core_score": 2574,
-        "speedup": 3.61,
-        "efficiency": 0.9,
-        "cpu_utilization": 90.25,
-        "number_of_cpus_tested": 1
+        "execution_time_single_core": 83.99340105056763,
+        "execution_time_multi_core": 23.754475951194763,
+        "single_core_score": 714.5,
+        "multi_core_score": 2527.0,
+        "speedup": 3.535,
+        "efficiency": 0.885,
+        "cpu_utilization": 88.435,
+        "number_of_cpus_tested": 2
     }
 ]
