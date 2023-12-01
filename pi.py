@@ -3,6 +3,7 @@ import multiprocessing
 import random
 import time
 import os
+import platform
 
 pi_benchmark_data = json.loads(open("pi_benchmark.json", "r").read())
 
@@ -62,9 +63,18 @@ def save_data_to_json():
 if __name__ == "__main__":
     digits = 200000000
     processes = os.cpu_count()
-    cpu_model = os.popen("cat /proc/cpuinfo | grep 'model name' | uniq").read()
-    cpu_model = cpu_model[cpu_model.find(":") + 2:]
-    cpu_model = cpu_model.replace("\n", "")
+    if platform.system() == "Windows":
+        cpu_model = os.popen("wmic cpu get name").read()
+        cpu_model = cpu_model[cpu_model.find("\n") + 1:]
+        cpu_model = cpu_model.replace("\n", "")
+    elif platform.system() == "Linux":
+        cpu_model = os.popen("cat /proc/cpuinfo | grep 'model name'").read()
+        cpu_model = cpu_model[cpu_model.find(":") + 2:]
+        cpu_model = cpu_model.replace("\n", "")
+    elif platform.system() == "Darwin":
+        cpu_model = os.popen("sysctl -n machdep.cpu.brand_string").read()
+        cpu_model = cpu_model.replace("\n", "")
+    
     execution_time_single_core = execution_time_for_multiprocessing(digits, 1)
     execution_time_multi_core = execution_time_for_multiprocessing(digits, processes)
     print(f"CPU model: {cpu_model}")
