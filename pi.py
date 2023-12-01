@@ -54,7 +54,7 @@ def display_data_in_txt():
             speedup = data["speedup"]
             efficiency = data["efficiency"]
             cpu_utilization = data["cpu_utilization"]
-            file.write(f"{cpu_model:<40}| {execution_time_single_core:<28}| {execution_time_multi_core:<27}| {single_core_score:<18}| {multi_core_score:<17}| {speedup:<8}| {efficiency:<11}| {cpu_utilization}%\n")
+            file.write(f"{cpu_model:<41}| {execution_time_single_core:<29}| {execution_time_multi_core:<28}| {single_core_score:<18}| {multi_core_score:<17}| {speedup:<8}| {efficiency:<11}| {cpu_utilization}%\n")
             
 def save_data_to_json():
     with open("pi_benchmark.json", "w") as file:
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         cpu_model = cpu_model[cpu_model.find("\n") + 1:]
         cpu_model = cpu_model.replace("\n", "")
     elif platform.system() == "Linux":
-        cpu_model = os.popen("cat /proc/cpuinfo | grep 'model name'").read()
+        cpu_model = os.popen("cat /proc/cpuinfo | grep 'model name' | uniq").read()
         cpu_model = cpu_model[cpu_model.find(":") + 2:]
         cpu_model = cpu_model.replace("\n", "")
     elif platform.system() == "Darwin":
