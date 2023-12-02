@@ -1,5 +1,5 @@
 CPU Model                                     | Execution time (single core) | Execution time (multi core) | Single core score | Multi core score | Speedup | Efficiency | CPU utilization
 
-13th Gen Intel(R) Core(TM) i7-13700K          | 23.055604577064514           | 2.1889333724975586          | 2603              | 27414            | 10.53   | 0.43       | 43.89%
+13th Gen Intel(R) Core(TM) i7-13700K          | 23.092110713322956           | 2.1858083407084146          | 2599              | 27453            | 10.56   | 0.44       | 44.02%
 Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz       | 83.99340105056763            | 23.754475951194763          | 714               | 2527             | 3.54    | 0.89       | 88.44%
 AMD EPYC 7763 64-Core Processor               | 79.20958232879639            | 64.49758434295654           | 758               | 930              | 1.23    | 0.61       | 61.41%

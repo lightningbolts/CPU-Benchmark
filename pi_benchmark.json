@@ -1,14 +1,14 @@
 [
     {
         "cpu_model": "13th Gen Intel(R) Core(TM) i7-13700K",
-        "execution_time_single_core": 23.055604577064514,
-        "execution_time_multi_core": 2.1889333724975586,
-        "single_core_score": 2603.0,
-        "multi_core_score": 27413.5,
-        "speedup": 10.530000000000001,
-        "efficiency": 0.435,
-        "cpu_utilization": 43.89,
-        "number_of_cpus_tested": 2
+        "execution_time_single_core": 23.092110713322956,
+        "execution_time_multi_core": 2.1858083407084146,
+        "single_core_score": 2598.6666666666665,
+        "multi_core_score": 27452.666666666668,
+        "speedup": 10.563333333333334,
+        "efficiency": 0.4366666666666667,
+        "cpu_utilization": 44.02,
+        "number_of_cpus_tested": 3
     },
     {
         "cpu_model": "Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz",
