@@ -4,6 +4,8 @@ import random
 import time
 import os
 import platform
+import numpy as np
+from numba import cuda
 
 pi_benchmark_data = json.loads(open("pi_benchmark.json", "r").read())
 
@@ -27,6 +29,29 @@ def calculate_pi_with_multiprocessing(digits, processes):
     pi_estimate = (total_inside_circle / total_points) * 4
     return pi_estimate
 
+
+@cuda.jit
+def monte_carlo_pi_gpu(points, results):
+    thread_id = cuda.grid(1)
+    inside_circle = 0
+    for i in range(thread_id, points, cuda.gridsize(1)):
+        x, y = np.random.random(), np.random.random()
+        distance = x**2 + y**2
+        if distance <= 1:
+            inside_circle += 1
+    cuda.atomic.add(results, 0, inside_circle)
+
+def calculate_pi_with_gpu(digits):
+    total_points = digits
+    block_size = 256
+    grid_size = (total_points + block_size - 1) // block_size
+    results = np.zeros(1, dtype=np.int32)
+    monte_carlo_pi_gpu[grid_size, block_size](total_points, results)
+    total_inside_circle = results[0]
+    pi_estimate = (total_inside_circle / total_points) * 4
+    return pi_estimate
+
+
 def execution_time_for_multiprocessing(digits, processes):
     start_time = time.time()
     calculate_pi_with_multiprocessing(digits, processes)
@@ -34,9 +59,20 @@ def execution_time_for_multiprocessing(digits, processes):
     execution_time = end_time - start_time
     return execution_time
 
+def execution_time_for_gpu(digits):
+    start_time = time.time()
+    calculate_pi_with_gpu(digits)
+    end_time = time.time()
+    execution_time = end_time - start_time
+    return execution_time
+
 def calculate_multi_core_score(digits, execution_time):
     multi_core_score = (digits / execution_time) / 3333
     return round(multi_core_score)
+
+def calculate_gpu_score(digits, execution_time):
+    gpu_score = (digits / execution_time) / 3333
+    return round(gpu_score)
 
 def display_data_in_txt():
     benchmark_data = json.loads(open("pi_benchmark.json", "r").read())
@@ -133,3 +169,4 @@ if __name__ == "__main__":
         })
     save_data_to_json()
     display_data_in_txt()
+    
