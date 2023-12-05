@@ -5,14 +5,14 @@
 double monte_carlo_pi(int points) {
     int inside_circle = 0;
     for (int i = 0; i < points; i++) {
-        double x = (double)rand() / RAND_MAX;
-        double y = (double)rand() / RAND_MAX;
+        double x = (double)rand();
+        double y = (double)rand();
         double distance = x*x + y*y;
         if (distance <= 1) {
             inside_circle++;
         }
     }
-    return (double)inside_circle / points * 4;
+    return (double)inside_circle;
 }
 
 int main() {
