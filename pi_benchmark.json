@@ -42,5 +42,16 @@
         "efficiency": 1.0,
         "cpu_utilization": 99.72,
         "number_of_cpus_tested": 1
+    },
+    {
+        "cpu_model": "Intel(R) Xeon(R) Platinum 8272CL CPU @ 2.60GHz",
+        "execution_time_single_core": 85.94751119613647,
+        "execution_time_multi_core": 86.42403841018677,
+        "single_core_score": 698,
+        "multi_core_score": 694,
+        "speedup": 0.99,
+        "efficiency": 0.99,
+        "cpu_utilization": 99.45,
+        "number_of_cpus_tested": 1
     }
 ]
