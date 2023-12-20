@@ -7,8 +7,11 @@ import platform
 import numpy as np
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+from dotenv import load_dotenv
+load_dotenv()
 
-uri = "mongodb+srv://timberlake2025:IamMusical222@taipan-cluster-1.iieczyn.mongodb.net/?retryWrites=true&w=majority"
+# Get the MongoDB URI from the environment variable
+uri = os.getenv('MONGODB_URI')
 
 # Set the Stable API version when creating a new client
 client = MongoClient(uri, server_api=ServerApi('1'))
