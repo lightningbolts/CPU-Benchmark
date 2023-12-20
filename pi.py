@@ -29,7 +29,7 @@ cpu_benchmark_coll = taipan_benchmarks['cpu_benchmarks']
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 # Use the absolute path to open the file
-pi_benchmark_data = json.loads(open(os.path.join(dir_path, "pi_benchmark.json"), "r").read())
+# pi_benchmark_data = json.loads(open(os.path.join(dir_path, "pi_benchmark.json"), "r").read())
 
 
 def monte_carlo_pi(points):
@@ -122,9 +122,9 @@ def display_data_in_txt():
                 f"{cpu_model:<51}| {execution_time_single_core:<29}| {execution_time_multi_core:<28}| {single_core_score:<18}| {multi_core_score:<17}| {speedup:<8}| {efficiency:<11}| {cpu_utilization}%\n")
 
 
-def save_data_to_json():
-    with open("pi_benchmark.json", "w") as file:
-        json.dump(pi_benchmark_data, file, indent=4)
+# def save_data_to_json():
+#     with open("pi_benchmark.json", "w") as file:
+#         json.dump(pi_benchmark_data, file, indent=4)
 
 
 if __name__ == "__main__":
@@ -190,41 +190,41 @@ if __name__ == "__main__":
     #         "number_of_cpus_tested": 1
     #     }
     # ]
-    for elem in pi_benchmark_data:
-        if cpu_model == elem["cpu_model"]:
-            elem["execution_time_single_core"] = (elem["number_of_cpus_tested"] * elem[
-                "execution_time_single_core"] + execution_time_single_core) / (elem["number_of_cpus_tested"] + 1)
-            elem["execution_time_multi_core"] = (elem["number_of_cpus_tested"] * elem[
-                "execution_time_multi_core"] + execution_time_multi_core) / (elem["number_of_cpus_tested"] + 1)
-            elem["single_core_score"] = (elem["number_of_cpus_tested"] * elem[
-                "single_core_score"] + calculate_multi_core_score(digits, execution_time_single_core)) / (
-                                                    elem["number_of_cpus_tested"] + 1)
-            elem["multi_core_score"] = (elem["number_of_cpus_tested"] * elem[
-                "multi_core_score"] + calculate_multi_core_score(digits, execution_time_multi_core)) / (
-                                                   elem["number_of_cpus_tested"] + 1)
-            elem["speedup"] = (elem["number_of_cpus_tested"] * elem["speedup"] + round(
-                execution_time_single_core / execution_time_multi_core, 2)) / (elem["number_of_cpus_tested"] + 1)
-            elem["efficiency"] = (elem["number_of_cpus_tested"] * elem["efficiency"] + round(
-                (execution_time_single_core / execution_time_multi_core) / processes, 2)) / (
-                                             elem["number_of_cpus_tested"] + 1)
-            elem["cpu_utilization"] = (elem["number_of_cpus_tested"] * elem["cpu_utilization"] + round(
-                ((execution_time_single_core / execution_time_multi_core) / processes) * 100, 2)) / (
-                                                  elem["number_of_cpus_tested"] + 1)
-            elem["number_of_cpus_tested"] += 1
-            break
-    if cpu_model not in [elem["cpu_model"] for elem in pi_benchmark_data]:
-        pi_benchmark_data.append({
-            "cpu_model": cpu_model,
-            "execution_time_single_core": execution_time_single_core,
-            "execution_time_multi_core": execution_time_multi_core,
-            "single_core_score": calculate_multi_core_score(digits, execution_time_single_core),
-            "multi_core_score": calculate_multi_core_score(digits, execution_time_multi_core),
-            "speedup": round(execution_time_single_core / execution_time_multi_core, 2),
-            "efficiency": round((execution_time_single_core / execution_time_multi_core) / processes, 2),
-            "cpu_utilization": round(((execution_time_single_core / execution_time_multi_core) / processes) * 100, 2),
-            "number_of_cpus_tested": 1,
-            "os_info": os_info
-        })
+    # for elem in pi_benchmark_data:
+    #     if cpu_model == elem["cpu_model"]:
+    #         elem["execution_time_single_core"] = (elem["number_of_cpus_tested"] * elem[
+    #             "execution_time_single_core"] + execution_time_single_core) / (elem["number_of_cpus_tested"] + 1)
+    #         elem["execution_time_multi_core"] = (elem["number_of_cpus_tested"] * elem[
+    #             "execution_time_multi_core"] + execution_time_multi_core) / (elem["number_of_cpus_tested"] + 1)
+    #         elem["single_core_score"] = (elem["number_of_cpus_tested"] * elem[
+    #             "single_core_score"] + calculate_multi_core_score(digits, execution_time_single_core)) / (
+    #                                                 elem["number_of_cpus_tested"] + 1)
+    #         elem["multi_core_score"] = (elem["number_of_cpus_tested"] * elem[
+    #             "multi_core_score"] + calculate_multi_core_score(digits, execution_time_multi_core)) / (
+    #                                                elem["number_of_cpus_tested"] + 1)
+    #         elem["speedup"] = (elem["number_of_cpus_tested"] * elem["speedup"] + round(
+    #             execution_time_single_core / execution_time_multi_core, 2)) / (elem["number_of_cpus_tested"] + 1)
+    #         elem["efficiency"] = (elem["number_of_cpus_tested"] * elem["efficiency"] + round(
+    #             (execution_time_single_core / execution_time_multi_core) / processes, 2)) / (
+    #                                          elem["number_of_cpus_tested"] + 1)
+    #         elem["cpu_utilization"] = (elem["number_of_cpus_tested"] * elem["cpu_utilization"] + round(
+    #             ((execution_time_single_core / execution_time_multi_core) / processes) * 100, 2)) / (
+    #                                               elem["number_of_cpus_tested"] + 1)
+    #         elem["number_of_cpus_tested"] += 1
+    #         break
+    # if cpu_model not in [elem["cpu_model"] for elem in pi_benchmark_data]:
+    #     pi_benchmark_data.append({
+    #         "cpu_model": cpu_model,
+    #         "execution_time_single_core": execution_time_single_core,
+    #         "execution_time_multi_core": execution_time_multi_core,
+    #         "single_core_score": calculate_multi_core_score(digits, execution_time_single_core),
+    #         "multi_core_score": calculate_multi_core_score(digits, execution_time_multi_core),
+    #         "speedup": round(execution_time_single_core / execution_time_multi_core, 2),
+    #         "efficiency": round((execution_time_single_core / execution_time_multi_core) / processes, 2),
+    #         "cpu_utilization": round(((execution_time_single_core / execution_time_multi_core) / processes) * 100, 2),
+    #         "number_of_cpus_tested": 1,
+    #         "os_info": os_info
+    #     })
     cpu_benchmark_doc = {
         "cpu_model": cpu_model,
         "execution_time_single_core": execution_time_single_core,
@@ -239,5 +239,5 @@ if __name__ == "__main__":
 
     # Insert the document into the database
     cpu_benchmark_coll.insert_one(cpu_benchmark_doc)
-    save_data_to_json()
-    display_data_in_txt()
+    # save_data_to_json()
+    # display_data_in_txt()
