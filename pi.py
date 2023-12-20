@@ -5,6 +5,24 @@ import time
 import os
 import platform
 import numpy as np
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+
+uri = "mongodb+srv://timberlake2025:IamMusical222@taipan-cluster-1.iieczyn.mongodb.net/?retryWrites=true&w=majority"
+
+# Set the Stable API version when creating a new client
+client = MongoClient(uri, server_api=ServerApi('1'))
+                          
+# Send a ping to confirm a successful connection
+try:
+    client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
+    
+# Create a new database and collection
+taipan_benchmarks = client['taipan_benchmarks']
+cpu_benchmark_coll = taipan_benchmarks['cpu_benchmarks']
 
 # from numba import cuda
 # Get the absolute path of the script
@@ -123,6 +141,19 @@ if __name__ == "__main__":
     elif platform.system() == "Darwin":
         cpu_model = os.popen("sysctl -n machdep.cpu.brand_string").read()
         cpu_model = cpu_model.replace("\n", "")
+    
+    # Get the operating system information
+    if platform.system() == "Windows":
+        os_info = os.popen("systeminfo | findstr /C:OS").read()
+        os_info = os_info[os_info.find(":") + 2:]
+        os_info = os_info.replace("\n", "")
+    elif platform.system() == "Linux":
+        os_info = os.popen("lsb_release -d").read()
+        os_info = os_info[os_info.find(":") + 2:]
+        os_info = os_info.replace("\n", "")
+    elif platform.system() == "Darwin":
+        os_info = os.popen("sw_vers -productName").read()
+        os_info = os_info.replace("\n", "")
 
     execution_time_single_core = execution_time_for_multiprocessing(digits, 1)
     execution_time_multi_core = execution_time_for_multiprocessing(digits, processes)
@@ -191,7 +222,22 @@ if __name__ == "__main__":
             "speedup": round(execution_time_single_core / execution_time_multi_core, 2),
             "efficiency": round((execution_time_single_core / execution_time_multi_core) / processes, 2),
             "cpu_utilization": round(((execution_time_single_core / execution_time_multi_core) / processes) * 100, 2),
-            "number_of_cpus_tested": 1
+            "number_of_cpus_tested": 1,
+            "os_info": os_info
         })
+    cpu_benchmark_doc = {
+        "cpu_model": cpu_model,
+        "execution_time_single_core": execution_time_single_core,
+        "execution_time_multi_core": execution_time_multi_core,
+        "single_core_score": calculate_multi_core_score(digits, execution_time_single_core),
+        "multi_core_score": calculate_multi_core_score(digits, execution_time_multi_core),
+        "speedup": execution_time_single_core / execution_time_multi_core,
+        "efficiency": (execution_time_single_core / execution_time_multi_core) / processes * 100,
+        "cpu_utilization": 100 - (execution_time_multi_core / execution_time_single_core) * 100,
+        "os": os_info,
+    }
+
+    # Insert the document into the database
+    cpu_benchmark_coll.insert_one(cpu_benchmark_doc)
     save_data_to_json()
     display_data_in_txt()
