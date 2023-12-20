@@ -19,6 +19,13 @@ async function run() {
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // Get database information
+    const taipan_benchmarks = client.db("taipan_benchmarks")
+    // Get collection information
+    const cpu_benchmarks = taipan_benchmarks.collection("cpu_benchmarks")
+    // Display all documents in a collection
+    const cursor = cpu_benchmarks.find({})
+    console.log(await cursor.toArray())
   } finally {
     // Ensures that the client will close when you finish/error
     await client.close();

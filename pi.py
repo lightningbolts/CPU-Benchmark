@@ -133,6 +133,9 @@ if __name__ == "__main__":
         os_info = os.popen("systeminfo | findstr /C:OS").read()
         os_info = os_info[os_info.find(":") + 2:]
         os_info = os_info.replace("\n", "")
+        os_info.split(":")
+        os_info = os_info[0]
+        os_info = os_info[18:]
     elif platform.system() == "Linux":
         os_info = os.popen("lsb_release -d").read()
         os_info = os_info[os_info.find(":") + 2:]
