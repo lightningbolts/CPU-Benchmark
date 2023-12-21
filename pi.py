@@ -10,23 +10,6 @@ from pymongo.server_api import ServerApi
 from dotenv import load_dotenv
 load_dotenv()
 
-# Get the MongoDB URI from the environment variable
-uri = os.getenv('MONGODB_URI')
-
-# Set the Stable API version when creating a new client
-client = MongoClient(uri, server_api=ServerApi('1'))
-                          
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    print("Pinged your deployment. You successfully connected to MongoDB!")
-except Exception as e:
-    print(e)
-    
-# Create a new database and collection
-taipan_benchmarks = client['taipan_benchmarks']
-cpu_benchmark_coll = taipan_benchmarks['cpu_benchmarks']
-
 # from numba import cuda
 # Get the absolute path of the script
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -239,6 +222,22 @@ if __name__ == "__main__":
         "cpu_utilization": 100 - (execution_time_multi_core / execution_time_single_core) * 100,
         "os": os_info,
     }
+    # Get the MongoDB URI from the environment variable
+    uri = os.getenv('MONGODB_URI')
+
+    # Set the Stable API version when creating a new client
+    client = MongoClient(uri, server_api=ServerApi('1'))
+
+    # Send a ping to confirm a successful connection
+    try:
+        client.admin.command('ping')
+        print("Pinged your deployment. You successfully connected to MongoDB!")
+    except Exception as e:
+        print(e)
+
+    # Create a new database and collection
+    taipan_benchmarks = client['taipan_benchmarks']
+    cpu_benchmark_coll = taipan_benchmarks['cpu_benchmarks']
 
     # Insert the document into the database
     cpu_benchmark_coll.insert_one(cpu_benchmark_doc)
