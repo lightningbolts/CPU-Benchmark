@@ -4,15 +4,24 @@
 #include <math.h>
 #include <string.h>
 
-#define NUM_POINTS 200000000
+#define NUM_POINTS 10000000
 
-double monte_carlo_pi(int points) {
+struct ThreadData
+{
+    int thread_id;
+    int points_in_circle;
+};
+
+double monte_carlo_pi(int points)
+{
     int inside_circle = 0;
-    for (int i = 0; i < points; i++) {
+    for (int i = 0; i < points; i++)
+    {
         double x = (double)rand() / RAND_MAX;
         double y = (double)rand() / RAND_MAX;
         double distance = x * x + y * y;
-        if (distance <= 1) {
+        if (distance <= 1)
+        {
             inside_circle++;
         }
     }
@@ -23,33 +32,38 @@ double monte_carlo_pi(int points) {
 #include <sys/wait.h> // for wait
 #include <unistd.h>   // for fork
 
-double calculate_pi_with_multiprocessing(int digits, int processes) {
+double calculate_pi_with_multiprocessing(int digits, int processes)
+{
     int total_points = digits;
     int points_per_process = total_points / processes;
 
-    // Create shared memory
-    #include <sys/mman.h> // Add this line to include the necessary header file
+// Create shared memory
+#include <sys/mman.h> // Add this line to include the necessary header file
 
-    #ifndef MAP_ANONYMOUS
-    #define MAP_ANONYMOUS MAP_ANON
-    #endif
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif
 
-    int* results = mmap(NULL, processes * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    
-    for (int i = 0; i < processes; i++) {
-        if (fork() == 0) { // Child process
+    int *results = mmap(NULL, processes * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+    for (int i = 0; i < processes; i++)
+    {
+        if (fork() == 0)
+        { // Child process
             results[i] = monte_carlo_pi(points_per_process);
             exit(0); // End child process
         }
     }
 
     // Wait for all child processes to finish
-    for (int i = 0; i < processes; i++) {
+    for (int i = 0; i < processes; i++)
+    {
         wait(NULL);
     }
 
     int total_inside_circle = 0;
-    for (int i = 0; i < processes; i++) {
+    for (int i = 0; i < processes; i++)
+    {
         total_inside_circle += results[i];
     }
 
@@ -60,7 +74,8 @@ double calculate_pi_with_multiprocessing(int digits, int processes) {
     return pi_estimate;
 }
 
-double execution_time_for_multiprocessing(int digits, int processes) {
+double execution_time_for_multiprocessing(int digits, int processes)
+{
     clock_t start_time = clock();
     calculate_pi_with_multiprocessing(digits, processes);
     clock_t end_time = clock();
@@ -69,19 +84,23 @@ double execution_time_for_multiprocessing(int digits, int processes) {
     return execution_time;
 }
 
-int calculate_multi_core_score(int digits, double execution_time) {
+int calculate_multi_core_score(int digits, double execution_time)
+{
     int multi_core_score = (digits / execution_time) / 3333;
     return round(multi_core_score);
 }
 
-int calculate_gpu_score(int digits, double execution_time) {
+int calculate_gpu_score(int digits, double execution_time)
+{
     int gpu_score = (digits / execution_time) / 3333;
     return round(gpu_score);
 }
 
-void display_data_in_txt() {
-    FILE* file = fopen("pi_benchmark.txt", "w");
-    if (file == NULL) {
+void display_data_in_txt()
+{
+    FILE *file = fopen("pi_benchmark.txt", "w");
+    if (file == NULL)
+    {
         printf("Error opening file.\n");
         return;
     }
@@ -90,47 +109,48 @@ void display_data_in_txt() {
     fclose(file);
 }
 
-int main() {
+int main()
+{
     srand(time(NULL));
     int digits = NUM_POINTS;
-    #include <unistd.h>
+#include <unistd.h>
     int processes = sysconf(_SC_NPROCESSORS_ONLN);
     char cpu_model[256];
     char os_info[256];
-    #ifdef _WIN32
-        FILE* cpu_info = popen("wmic cpu get name", "r");
-        fgets(cpu_model, sizeof(cpu_model), cpu_info);
-        pclose(cpu_info);
-        cpu_model[strcspn(cpu_model, "\n")] = 0;
-        FILE* os_info_file = popen("systeminfo | findstr /C:OS", "r");
-        fgets(os_info, sizeof(os_info), os_info_file);
-        pclose(os_info_file);
-        os_info[strcspn(os_info, "\n")] = 0;
-        os_info[strcspn(os_info, "\r")] = 0;
-        os_info = strtok(os_info, "Version:");
-        os_info = strtok(os_info, "                  ");
-    #elif __linux__
-        FILE* cpu_info = popen("cat /proc/cpuinfo | grep 'model name' | uniq", "r");
-        fgets(cpu_model, sizeof(cpu_model), cpu_info);
-        pclose(cpu_info);
-        cpu_model[strcspn(cpu_model, "\n")] = 0;
-        // Truncate the string to remove the "model name: " part
-        char* token = strtok(cpu_model, "model name: ");
-        strcpy(cpu_model, token);
-        FILE* os_info_file = popen("lsb_release -d", "r");
-        fgets(os_info, sizeof(os_info), os_info_file);
-        pclose(os_info_file);
-        os_info[strcspn(os_info, "\n")] = 0;
-    #elif __APPLE__
-        FILE* cpu_info = popen("sysctl -n machdep.cpu.brand_string", "r");
-        fgets(cpu_model, sizeof(cpu_model), cpu_info);
-        pclose(cpu_info);
-        cpu_model[strcspn(cpu_model, "\n")] = 0;
-        FILE* os_info_file = popen("sw_vers -productName", "r");
-        fgets(os_info, sizeof(os_info), os_info_file);
-        pclose(os_info_file);
-        os_info[strcspn(os_info, "\n")] = 0;
-    #endif
+#ifdef _WIN32
+    FILE *cpu_info = popen("wmic cpu get name", "r");
+    fgets(cpu_model, sizeof(cpu_model), cpu_info);
+    pclose(cpu_info);
+    cpu_model[strcspn(cpu_model, "\n")] = 0;
+    FILE *os_info_file = popen("systeminfo | findstr /C:OS", "r");
+    fgets(os_info, sizeof(os_info), os_info_file);
+    pclose(os_info_file);
+    os_info[strcspn(os_info, "\n")] = 0;
+    os_info[strcspn(os_info, "\r")] = 0;
+    os_info = strtok(os_info, "Version:");
+    os_info = strtok(os_info, "                  ");
+#elif __linux__
+    FILE *cpu_info = popen("cat /proc/cpuinfo | grep 'model name' | uniq", "r");
+    fgets(cpu_model, sizeof(cpu_model), cpu_info);
+    pclose(cpu_info);
+    cpu_model[strcspn(cpu_model, "\n")] = 0;
+    // Truncate the string to remove the "model name: " part
+    char *token = strtok(cpu_model, "model name: ");
+    strcpy(cpu_model, token);
+    FILE *os_info_file = popen("lsb_release -d", "r");
+    fgets(os_info, sizeof(os_info), os_info_file);
+    pclose(os_info_file);
+    os_info[strcspn(os_info, "\n")] = 0;
+#elif __APPLE__
+    FILE *cpu_info = popen("sysctl -n machdep.cpu.brand_string", "r");
+    fgets(cpu_model, sizeof(cpu_model), cpu_info);
+    pclose(cpu_info);
+    cpu_model[strcspn(cpu_model, "\n")] = 0;
+    FILE *os_info_file = popen("sw_vers -productName", "r");
+    fgets(os_info, sizeof(os_info), os_info_file);
+    pclose(os_info_file);
+    os_info[strcspn(os_info, "\n")] = 0;
+#endif
 
     double execution_time_single_core = execution_time_for_multiprocessing(digits, 1);
     double execution_time_multi_core = execution_time_for_multiprocessing(digits, processes);
@@ -142,36 +162,5 @@ int main() {
     printf("Speedup for %d digits is %f\n", digits, execution_time_single_core / execution_time_multi_core);
     printf("Efficiency for %d digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
     printf("CPU utilization for %d digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
-
-    FILE* benchmark_file = fopen("pi_benchmark.json", "r");
-    if (benchmark_file == NULL) {
-        printf("Error opening file.\n");
-        return 1;
-    }
-    char benchmark_data[10000];
-    fgets(benchmark_data, sizeof(benchmark_data), benchmark_file);
-    fclose(benchmark_file);
-
-    FILE* json_file = fopen("pi_benchmark.json", "w");
-    if (json_file == NULL) {
-        printf("Error opening file.\n");
-        return 1;
-    }
-    fprintf(json_file, "%s", benchmark_data);
-    fprintf(json_file, "{\n");
-    fprintf(json_file, "    \"cpu_model\": \"%s\",\n", cpu_model);
-    fprintf(json_file, "    \"execution_time_single_core\": %f,\n", execution_time_single_core);
-    fprintf(json_file, "    \"execution_time_multi_core\": %f,\n", execution_time_multi_core);
-    fprintf(json_file, "    \"single_core_score\": %d,\n", calculate_multi_core_score(digits, execution_time_single_core));
-    fprintf(json_file, "    \"multi_core_score\": %d,\n", calculate_multi_core_score(digits, execution_time_multi_core));
-    fprintf(json_file, "    \"speedup\": %f,\n", execution_time_single_core / execution_time_multi_core);
-    fprintf(json_file, "    \"efficiency\": %f,\n", (execution_time_single_core / execution_time_multi_core) / processes);
-    fprintf(json_file, "    \"cpu_utilization\": %f,\n", 100 - (execution_time_multi_core / execution_time_single_core) * 100);
-    fprintf(json_file, "    \"os\": \"%s\"\n", os_info);
-    fprintf(json_file, "}\n");
-    fclose(json_file);
-
     return 0;
 }
-
-
