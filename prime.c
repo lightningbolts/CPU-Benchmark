@@ -6,6 +6,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h>
+#include <sys/sysctl.h>
 #include <mongoc/mongoc.h>
 
 /* Each thread gets a start and end number and returns the number
@@ -204,40 +206,31 @@ int main(int argc, char **argv)
     // printf("OS Info: %s\n", os_display);
 
 #elif __APPLE__
-    size_t len;
-    char *model = NULL;
-
     // Query for CPU model
-    if (sysctlbyname("machdep.cpu.brand_string", NULL, &len, NULL, 0) == 0)
-    {
-        model = (char *)malloc(len);
-        if (model != NULL)
-        {
-            if (sysctlbyname("machdep.cpu.brand_string", model, &len, NULL, 0) == 0)
-            {
-                printf("CPU Model: %s\n", model);
-            }
-            else
-            {
-                perror("Error getting CPU model");
-            }
-            free(model);
-        }
-        else
-        {
-            perror("Memory allocation error");
-        }
-    }
-    else
-    {
-        perror("Error getting CPU model length");
-    }
-
+    size_t len = sizeof(cpu_model);
+    sysctlbyname("machdep.cpu.brand_string", &cpu_model, &len, NULL, 0);
     // Query for OS info
-    FILE *os_info_file = popen("sw_vers -productName", "r");
-    fgets(os_info, sizeof(os_info), os_info_file);
-    pclose(os_info_file);
-    os_info[strcspn(os_info, "\n")] = 0;
+    size_t len2 = sizeof(os_info);
+    sysctlbyname("kern.osproductversion", &os_info, &len2, NULL, 0);
+    // Declare model_info variable
+    char *model_info;
+    // Assign value to model_info
+    model_info = cpu_model;
+    // Declare cpu_display_model variable
+    char *cpu_display_model;
+    // Assign value to cpu_display_model
+    cpu_display_model = cpu_model;
+    // Declare os_display variable
+    char *os_display;
+    // Assign value to os_display
+    os_display = os_info;
+    // Add "macOS" to the beginning of os_display
+    char *os_display_prefix = "macOS ";
+    char *os_display_temp = malloc(strlen(os_display_prefix) + strlen(os_display) + 1);
+    strcpy(os_display_temp, os_display_prefix);
+    strcat(os_display_temp, os_display);
+    os_display = os_display_temp;
+
 #endif
 
     double execution_time_single_core = calculate_execution_time(digits, 1);
