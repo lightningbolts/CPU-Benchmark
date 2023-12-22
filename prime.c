@@ -174,7 +174,18 @@ int main(int argc, char **argv)
         printf("CPU Model information not found in /proc/cpuinfo.\n");
     }
     char *model_info = strchr(line, ':');
+    // Remove /n from the line
+    model_info[strcspn(model_info, "\n")] = 0;
     strcpy(cpu_model, model_info);
+    // Remove leading spaces or tabs
+    while (*model_info == ' ' || *model_info == '\t')
+    {
+        model_info++; // Skip leading spaces or tabs
+    }
+    // Declare cpu_display_model variable
+    char *cpu_display_model;
+    // Assign value to cpu_display_model
+    cpu_display_model = model_info + 2;
 
     fclose(cpuinfo);
     // Get OS info
@@ -182,6 +193,16 @@ int main(int argc, char **argv)
     fgets(os_info, sizeof(os_info), os_info_file);
     pclose(os_info_file);
     os_info[strcspn(os_info, "\n")] = 0;
+    // Remove "Description:" from the line
+    char *os_display = strchr(os_info, ':');
+    os_display++;
+    // Remove leading spaces or tabs
+    while (*os_display == ' ' || *os_display == '\t')
+    {
+        os_display++; // Skip leading spaces or tabs
+    }
+    // printf("OS Info: %s\n", os_display);
+
 #elif __APPLE__
     size_t len;
     char *model = NULL;
@@ -222,7 +243,8 @@ int main(int argc, char **argv)
     double execution_time_single_core = calculate_execution_time(digits, 1);
     double execution_time_multi_core = calculate_execution_time(digits, processes);
     printf("CPU Model%s", model_info);
-    printf(os_info);
+    printf("\n");
+    printf(os_display);
     printf("\n");
     printf("Execution time for %d digits with single core is %f\n", digits, execution_time_single_core);
     printf("Execution time for %d digits with %d cores is %f\n", digits, processes, execution_time_multi_core);
@@ -232,96 +254,49 @@ int main(int argc, char **argv)
     printf("Efficiency for %d digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
     printf("CPU utilization for %d digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
 
-    bson_error_t error = {0};
-    mongoc_server_api_t *api = NULL;
-    mongoc_database_t *database = NULL;
-    bson_t *command = NULL;
-    bson_t reply = BSON_INITIALIZER;
-    int rc = 0;
-    bool ok = true;
-    mongoc_client_t *client = NULL; // Declare the "client" variable
+    mongoc_client_t *client;
+    mongoc_collection_t *collection;
+    bson_error_t error;
+    bson_oid_t oid;
+    bson_t *doc;
 
-    // Initialize the MongoDB C Driver.
     mongoc_init();
-    char *MONGODB_URI = getenv("MONGODB_URI");
-    printf("MONGODB_URI: %s\n", MONGODB_URI);
-    client = mongoc_client_new(getenv("MONGODB_URI"));
-    if (!client)
-    {
-        fprintf(stderr, "Failed to create a MongoDB client.\n");
-        rc = 1;
-        goto cleanup;
-    }
-    // Set the version of the Stable API on the client.
-    api = mongoc_server_api_new(MONGOC_SERVER_API_V1);
-    if (!api)
-    {
-        fprintf(stderr, "Failed to create a MongoDB server API.\n");
-        rc = 1;
-        goto cleanup;
-    }
-    ok = mongoc_client_set_server_api(client, api, &error);
-    if (!ok)
-    {
-        bson_error_t error = {0};
-        mongoc_server_api_t *api = NULL;
-        mongoc_database_t *database = NULL;
-        bson_t *command = NULL;
-        bson_t reply = BSON_INITIALIZER;
-        int rc = 0;
-        bool ok = true;
-        // Initialize the MongoDB C Driver.
-        mongoc_init();
-        client = mongoc_client_new("mongodb+srv://timberlake2025:<password>@taipan-cluster-1.iieczyn.mongodb.net/?retryWrites=true&w=majority");
-        if (!client)
-        {
-            fprintf(stderr, "Failed to create a MongoDB client.\n");
-            rc = 1;
-            goto cleanup;
-        }
-        // Set the version of the Stable API on the client.
-        api = mongoc_server_api_new(MONGOC_SERVER_API_V1);
-        if (!api)
-        {
-            fprintf(stderr, "Failed to create a MongoDB server API.\n");
-            rc = 1;
-            goto cleanup;
-        }
-        ok = mongoc_client_set_server_api(client, api, &error);
-        if (!ok)
-        {
-            fprintf(stderr, "error: %s\n", error.message);
-            rc = 1;
-            goto cleanup;
-        }
 
-        // Get a handle on the "admin" database.
-        database = mongoc_client_get_database(client, "admin");
-        if (!database)
-        {
-            fprintf(stderr, "Failed to get a MongoDB database handle.\n");
-            rc = 1;
-            goto cleanup;
-        }
-        // Ping the database.
-        command = BCON_NEW("ping", BCON_INT32(1));
-        ok = mongoc_database_command_simple(
-            database, command, NULL, &reply, &error);
-        if (!ok)
-        {
-            fprintf(stderr, "error: %s", error.message);
-            rc = 1;
-            goto cleanup;
-        }
-        bson_destroy(&reply);
-        printf("Pinged your deployment. You successfully connected to MongoDB!\n");
-        // Perform cleanup.
-    cleanup:
-        bson_destroy(command);
-        mongoc_database_destroy(database);
-        mongoc_server_api_destroy(api);
-        mongoc_client_destroy(client);
-        mongoc_cleanup();
-        return rc;
+    client = mongoc_client_new("mongodb+srv://timberlake2025:IamMusical222@taipan-cluster-1.iieczyn.mongodb.net/?retryWrites=true&w=majority");
+    collection = mongoc_client_get_collection(client, "taipan_benchmarks", "cpu_benchmarks");
+
+    doc = bson_new();
+    bson_oid_init(&oid, NULL);
+    BSON_APPEND_OID(doc, "_id", &oid);
+    BSON_APPEND_UTF8(doc, "cpu_model", cpu_display_model);
+    BSON_APPEND_UTF8(doc, "os_info", os_display);
+    BSON_APPEND_INT32(doc, "digits", digits);
+    BSON_APPEND_INT32(doc, "single_core_score", calculate_score(digits, execution_time_single_core));
+    BSON_APPEND_INT32(doc, "multi_core_score", calculate_score(digits, execution_time_multi_core));
+    BSON_APPEND_DOUBLE(doc, "speedup", execution_time_single_core / execution_time_multi_core);
+    BSON_APPEND_DOUBLE(doc, "efficiency", (execution_time_single_core / execution_time_multi_core) / processes);
+    BSON_APPEND_DOUBLE(doc, "cpu_utilization", 100 - (execution_time_multi_core / execution_time_single_core) * 100);
+    // Append current time to document in UTC
+    time_t t = time(NULL);
+    struct tm tm = *gmtime(&t);
+    char time_string[64];
+    strftime(time_string, sizeof(time_string), "%c", &tm);
+    BSON_APPEND_UTF8(doc, "time", time_string);
+    // Append hostname to document
+    char hostname[256];
+    gethostname(hostname, sizeof(hostname));
+    BSON_APPEND_UTF8(doc, "hostname", hostname);
+
+    if (!mongoc_collection_insert_one(
+            collection, doc, NULL, NULL, &error))
+    {
+        fprintf(stderr, "%s\n", error.message);
     }
+
+    bson_destroy(doc);
+    mongoc_collection_destroy(collection);
+    mongoc_client_destroy(client);
+    mongoc_cleanup();
+
+    return 0;
 }
