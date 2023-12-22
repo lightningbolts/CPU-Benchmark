@@ -119,7 +119,7 @@ int calculate_score(int digits, double execution_time)
 
 int main(int argc, char **argv)
 {
-    unsigned long digits = 5000000L;
+    unsigned long digits = 50000000L;
     srand(time(NULL));
     int processes = sysconf(_SC_NPROCESSORS_ONLN);
     char cpu_model[256];
