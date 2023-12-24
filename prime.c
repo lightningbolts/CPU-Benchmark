@@ -15,9 +15,9 @@
    Of primes in that range */
 struct range
 {
-    unsigned long start;
-    unsigned long end;
-    unsigned long count;
+    int64_t start;
+    int64_t end;
+    int64_t count;
 };
 
 struct prime_benchmark
@@ -25,7 +25,7 @@ struct prime_benchmark
     /* data */
     char *cpu_model;
     char *os_info;
-    unsigned long digits;
+    int64_t digits;
     int single_core_score;
     int multi_core_score;
     double speedup;
@@ -41,8 +41,8 @@ prime_check(void *_args)
 {
     /* Cast the args to a usable struct type */
     struct range *args = (struct range *)_args;
-    unsigned long iter = 2;
-    unsigned long value;
+    int64_t iter = 2;
+    int64_t value;
 
     /* Skip over any numbers < 2, which is the smallest prime */
     if (args->start < 2)
@@ -69,20 +69,20 @@ prime_check(void *_args)
     pthread_exit(NULL);
 }
 
-int multicore_processing_prime(unsigned long digits, int num_threads)
+int multicore_processing_prime(int64_t digits, int num_threads)
 {
     pthread_t threads[num_threads];
     struct range *args[num_threads];
     int thread;
 
     /* Count the number of primes smaller than this value: */
-    unsigned long number_count = digits;
+    int64_t number_count = digits;
 
     /* Specify start and end values, then split based on number of
        threads */
-    unsigned long start = 0;
-    unsigned long end = start + number_count;
-    unsigned long number_per_thread = number_count / num_threads;
+    int64_t start = 0;
+    int64_t end = start + number_count;
+    int64_t number_per_thread = number_count / num_threads;
 
     /* Simplification: make range divide evenly among the threads */
     // assert(number_count % num_threads == 0);
@@ -99,7 +99,7 @@ int multicore_processing_prime(unsigned long digits, int num_threads)
     }
 
     /* All threads are running. Join all to collect the results. */
-    unsigned long total_number = 0;
+    int64_t total_number = 0;
     for (thread = 0; thread < num_threads; thread++)
     {
         pthread_join(threads[thread], NULL);
@@ -162,7 +162,7 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 int main(int argc, char **argv)
 {
-    unsigned long digits = 50000000L;
+    int64_t digits = 50000000L;
     srand(time(NULL));
     int processes;
     char cpu_model[256];
@@ -190,10 +190,10 @@ int main(int argc, char **argv)
     strcpy(cpu_model, cpu_model_temp);
 
     // Remove leading spaces or tabs
-//    while (*cpu_model == ' ' || *cpu_model == '\t')
-//    {
-//        cpu_model++; // Skip leading spaces or tabs
-//    }
+    //    while (*cpu_model == ' ' || *cpu_model == '\t')
+    //    {
+    //        cpu_model++; // Skip leading spaces or tabs
+    //    }
     // Declare model_info variable
     char *model_info;
     // Assign value to model_info
@@ -208,10 +208,10 @@ int main(int argc, char **argv)
     DWORD bufSize2 = sizeof(os_info_temp);
     HKEY hKey2;
     LONG lError2 = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-                               "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
-                               0,
-                               KEY_READ,
-                               &hKey2);
+                                "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                                0,
+                                KEY_READ,
+                                &hKey2);
     if (lError2 != ERROR_SUCCESS)
     {
         printf("Error opening key");
@@ -220,10 +220,10 @@ int main(int argc, char **argv)
     RegQueryValueEx(hKey2, "ProductName", NULL, NULL, (LPBYTE)os_info_temp, &bufSize2);
     strcpy(os_info, os_info_temp);
     // Remove leading spaces or tabs
-//    while (*os_info == ' ' || *os_info == '\t')
-//    {
-//        os_info++; // Skip leading spaces or tabs
-//    }
+    //    while (*os_info == ' ' || *os_info == '\t')
+    //    {
+    //        os_info++; // Skip leading spaces or tabs
+    //    }
     // Declare os_display variable
     char *os_display;
     // Assign value to os_display
@@ -346,14 +346,14 @@ int main(int argc, char **argv)
     strftime(time_string, sizeof(time_string), "%c", &tm);
 
     char hostname[256];
-    #ifdef __linux__
+#ifdef __linux__
     gethostname(hostname, sizeof(hostname));
-    #elif __APPLE__
+#elif __APPLE__
     gethostname(hostname, sizeof(hostname));
-    #elif _WIN32
+#elif _WIN32
     DWORD size = sizeof(hostname);
     GetComputerNameA(hostname, &size);
-    #endif
+#endif
 
     struct prime_benchmark prime_benchmark = {
         cpu_display_model,
