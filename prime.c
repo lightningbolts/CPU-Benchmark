@@ -8,6 +8,7 @@
 #include <math.h>
 #include <time.h>
 #include <curl/curl.h>
+#include <string.h>
 #include <jansson.h>
 
 /* Each thread gets a start and end number and returns the number
@@ -17,6 +18,21 @@ struct range
     unsigned long start;
     unsigned long end;
     unsigned long count;
+};
+
+struct prime_benchmark
+{
+    /* data */
+    char *cpu_model;
+    char *os_info;
+    unsigned long digits;
+    int single_core_score;
+    int multi_core_score;
+    double speedup;
+    double efficiency;
+    double cpu_utilization;
+    char *time;
+    char *hostname;
 };
 
 /* Thread function for counting primes */
@@ -117,6 +133,31 @@ int calculate_score(int digits, double execution_time)
 {
     int multi_core_score = (digits / execution_time) / 666;
     return round(multi_core_score);
+}
+
+// Function to convert struct to JSON object
+json_t *structToJson(struct prime_benchmark *prime_benchmark)
+{
+    json_t *prime_benchmark_json = json_object();
+    json_object_set_new(prime_benchmark_json, "cpu_model", json_string(prime_benchmark->cpu_model));
+    json_object_set_new(prime_benchmark_json, "os_info", json_string(prime_benchmark->os_info));
+    json_object_set_new(prime_benchmark_json, "digits", json_integer(prime_benchmark->digits));
+    json_object_set_new(prime_benchmark_json, "single_core_score", json_integer(prime_benchmark->single_core_score));
+    json_object_set_new(prime_benchmark_json, "multi_core_score", json_integer(prime_benchmark->multi_core_score));
+    json_object_set_new(prime_benchmark_json, "speedup", json_real(prime_benchmark->speedup));
+    json_object_set_new(prime_benchmark_json, "efficiency", json_real(prime_benchmark->efficiency));
+    json_object_set_new(prime_benchmark_json, "cpu_utilization", json_real(prime_benchmark->cpu_utilization));
+    json_object_set_new(prime_benchmark_json, "time", json_string(prime_benchmark->time));
+    json_object_set_new(prime_benchmark_json, "hostname", json_string(prime_benchmark->hostname));
+    return prime_benchmark_json;
+}
+
+size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    // Simply print the response to the console
+    printf("%.*s", (int)(size * nmemb), (char *)contents);
+    printf("\n");
+    return size * nmemb;
 }
 
 int main(int argc, char **argv)
@@ -257,21 +298,6 @@ int main(int argc, char **argv)
     char hostname[256];
     gethostname(hostname, sizeof(hostname));
 
-    struct prime_benchmark
-    {
-        /* data */
-        char *cpu_model;
-        char *os_info;
-        unsigned long digits;
-        int single_core_score;
-        int multi_core_score;
-        double speedup;
-        double efficiency;
-        double cpu_utilization;
-        char *time;
-        char *hostname;
-    };
-
     struct prime_benchmark prime_benchmark = {
         cpu_display_model,
         os_display,
@@ -283,31 +309,6 @@ int main(int argc, char **argv)
         100 - (execution_time_multi_core / execution_time_single_core) * 100,
         time_string,
         hostname};
-
-    // Function to convert struct to JSON object
-    json_t *structToJson(struct prime_benchmark * prime_benchmark)
-    {
-        json_t *prime_benchmark_json = json_object();
-        json_object_set_new(prime_benchmark_json, "cpu_model", json_string(prime_benchmark->cpu_model));
-        json_object_set_new(prime_benchmark_json, "os_info", json_string(prime_benchmark->os_info));
-        json_object_set_new(prime_benchmark_json, "digits", json_integer(prime_benchmark->digits));
-        json_object_set_new(prime_benchmark_json, "single_core_score", json_integer(prime_benchmark->single_core_score));
-        json_object_set_new(prime_benchmark_json, "multi_core_score", json_integer(prime_benchmark->multi_core_score));
-        json_object_set_new(prime_benchmark_json, "speedup", json_real(prime_benchmark->speedup));
-        json_object_set_new(prime_benchmark_json, "efficiency", json_real(prime_benchmark->efficiency));
-        json_object_set_new(prime_benchmark_json, "cpu_utilization", json_real(prime_benchmark->cpu_utilization));
-        json_object_set_new(prime_benchmark_json, "time", json_string(prime_benchmark->time));
-        json_object_set_new(prime_benchmark_json, "hostname", json_string(prime_benchmark->hostname));
-        return prime_benchmark_json;
-    }
-
-    size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
-    {
-        // Simply print the response to the console
-        printf("%.*s", (int)(size * nmemb), (char *)contents);
-        printf("\n");
-        return size * nmemb;
-    }
 
     // Connect to API endpoint: https://taipan-benchmarks.vercel.app/api/cpu-benchmarks
     char *host = "https://taipan-benchmarks.vercel.app/api/cpu-benchmarks";
