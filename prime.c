@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
-#include <sys/sysctl.h>
-#include <mongoc/mongoc.h>
+#include <curl/curl.h>
+#include <jansson.h>
 
 /* Each thread gets a start and end number and returns the number
    Of primes in that range */
@@ -206,6 +206,8 @@ int main(int argc, char **argv)
     // printf("OS Info: %s\n", os_display);
 
 #elif __APPLE__
+#include <sys/sysctl.h>
+
     // Query for CPU model
     size_t len = sizeof(cpu_model);
     sysctlbyname("machdep.cpu.brand_string", &cpu_model, &len, NULL, 0);
@@ -247,49 +249,122 @@ int main(int argc, char **argv)
     printf("Efficiency for %d digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
     printf("CPU utilization for %d digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
 
-    mongoc_client_t *client;
-    mongoc_collection_t *collection;
-    bson_error_t error;
-    bson_oid_t oid;
-    bson_t *doc;
-
-    mongoc_init();
-
-    client = mongoc_client_new("mongodb+srv://timberlake2025:IamMusical222@taipan-cluster-1.iieczyn.mongodb.net/?retryWrites=true&w=majority");
-    collection = mongoc_client_get_collection(client, "taipan_benchmarks", "cpu_benchmarks");
-
-    doc = bson_new();
-    bson_oid_init(&oid, NULL);
-    BSON_APPEND_OID(doc, "_id", &oid);
-    BSON_APPEND_UTF8(doc, "cpu_model", cpu_display_model);
-    BSON_APPEND_UTF8(doc, "os_info", os_display);
-    BSON_APPEND_INT32(doc, "digits", digits);
-    BSON_APPEND_INT32(doc, "single_core_score", calculate_score(digits, execution_time_single_core));
-    BSON_APPEND_INT32(doc, "multi_core_score", calculate_score(digits, execution_time_multi_core));
-    BSON_APPEND_DOUBLE(doc, "speedup", execution_time_single_core / execution_time_multi_core);
-    BSON_APPEND_DOUBLE(doc, "efficiency", (execution_time_single_core / execution_time_multi_core) / processes);
-    BSON_APPEND_DOUBLE(doc, "cpu_utilization", 100 - (execution_time_multi_core / execution_time_single_core) * 100);
-    // Append current time to document in UTC
     time_t t = time(NULL);
     struct tm tm = *gmtime(&t);
     char time_string[64];
     strftime(time_string, sizeof(time_string), "%c", &tm);
-    BSON_APPEND_UTF8(doc, "time", time_string);
-    // Append hostname to document
+
     char hostname[256];
     gethostname(hostname, sizeof(hostname));
-    BSON_APPEND_UTF8(doc, "hostname", hostname);
 
-    if (!mongoc_collection_insert_one(
-            collection, doc, NULL, NULL, &error))
+    struct prime_benchmark
     {
-        fprintf(stderr, "%s\n", error.message);
+        /* data */
+        char *cpu_model;
+        char *os_info;
+        unsigned long digits;
+        int single_core_score;
+        int multi_core_score;
+        double speedup;
+        double efficiency;
+        double cpu_utilization;
+        char *time;
+        char *hostname;
+    };
+
+    struct prime_benchmark prime_benchmark = {
+        cpu_display_model,
+        os_display,
+        digits,
+        calculate_score(digits, execution_time_single_core),
+        calculate_score(digits, execution_time_multi_core),
+        execution_time_single_core / execution_time_multi_core,
+        (execution_time_single_core / execution_time_multi_core) / processes,
+        100 - (execution_time_multi_core / execution_time_single_core) * 100,
+        time_string,
+        hostname};
+
+    // Function to convert struct to JSON object
+    json_t *structToJson(struct prime_benchmark * prime_benchmark)
+    {
+        json_t *prime_benchmark_json = json_object();
+        json_object_set_new(prime_benchmark_json, "cpu_model", json_string(prime_benchmark->cpu_model));
+        json_object_set_new(prime_benchmark_json, "os_info", json_string(prime_benchmark->os_info));
+        json_object_set_new(prime_benchmark_json, "digits", json_integer(prime_benchmark->digits));
+        json_object_set_new(prime_benchmark_json, "single_core_score", json_integer(prime_benchmark->single_core_score));
+        json_object_set_new(prime_benchmark_json, "multi_core_score", json_integer(prime_benchmark->multi_core_score));
+        json_object_set_new(prime_benchmark_json, "speedup", json_real(prime_benchmark->speedup));
+        json_object_set_new(prime_benchmark_json, "efficiency", json_real(prime_benchmark->efficiency));
+        json_object_set_new(prime_benchmark_json, "cpu_utilization", json_real(prime_benchmark->cpu_utilization));
+        json_object_set_new(prime_benchmark_json, "time", json_string(prime_benchmark->time));
+        json_object_set_new(prime_benchmark_json, "hostname", json_string(prime_benchmark->hostname));
+        return prime_benchmark_json;
     }
 
-    bson_destroy(doc);
-    mongoc_collection_destroy(collection);
-    mongoc_client_destroy(client);
-    mongoc_cleanup();
+    size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
+    {
+        // Simply print the response to the console
+        printf("%.*s", (int)(size * nmemb), (char *)contents);
+        printf("\n");
+        return size * nmemb;
+    }
 
+    // Connect to API endpoint: https://taipan-benchmarks.vercel.app/api/cpu-benchmarks
+    char *host = "https://taipan-benchmarks.vercel.app/api/cpu-benchmarks";
+    // Initialize libcurl
+    CURL *curl;
+    CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    if (res != CURLE_OK)
+    {
+        fprintf(stderr, "curl_global_init() failed: %s\n", curl_easy_strerror(res));
+        return 1;
+    }
+
+    // Create a curl handle
+    curl = curl_easy_init();
+
+    if (!curl)
+    {
+        fprintf(stderr, "curl_easy_init() failed\n");
+        curl_global_cleanup();
+        return 1;
+    }
+
+    // Set the target URL
+    const char *url = "https://taipan-benchmarks.vercel.app/api/cpu-benchmarks";
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+
+    // Set the HTTP method to POST
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+
+    // Set the POST data (replace with your JSON object)
+
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_dumps(structToJson(&prime_benchmark), 0));
+
+    printf("Sending request to %s\n", url);
+
+    // Set the Content-Type header
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+    // Set the callback function to handle the server response
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+
+    // Perform the HTTP request
+    res = curl_easy_perform(curl);
+
+    printf("Request sent successfully!\n");
+
+    // Check for errors
+    if (res != CURLE_OK)
+    {
+        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+    }
+
+    // Clean up
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
     return 0;
 }
