@@ -7,9 +7,14 @@
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
-#include <curl/curl.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <inttypes.h>
 #include <string.h>
-#include <jansson.h>
+#include <arpa/inet.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#define MAX_BUFFER_SIZE 1024
 
 /* Each thread gets a start and end number and returns the number
    Of primes in that range */
@@ -34,6 +39,27 @@ struct prime_benchmark
     char *time;
     char *hostname;
 };
+
+// Function to convert struct to JSON string
+void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
+{
+    sprintf(jsonString, "{"
+                        "\"cpu_model\":\"%s\","
+                        "\"os_info\":\"%s\","
+                        "\"digits\":%" PRId64 ","
+                        "\"single_core_score\":%d,"
+                        "\"multi_core_score\":%d,"
+                        "\"speedup\":%lf,"
+                        "\"efficiency\":%lf,"
+                        "\"cpu_utilization\":%lf,"
+                        "\"time\":\"%s\","
+                        "\"hostname\":\"%s\""
+                        "}",
+            benchmark.cpu_model, benchmark.os_info, benchmark.digits,
+            benchmark.single_core_score, benchmark.multi_core_score,
+            benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
+            benchmark.time, benchmark.hostname);
+}
 
 /* Thread function for counting primes */
 void *
@@ -133,23 +159,6 @@ int calculate_score(int digits, double execution_time)
 {
     int multi_core_score = (digits / execution_time) / 666;
     return round(multi_core_score);
-}
-
-// Function to convert struct to JSON object
-json_t *structToJson(struct prime_benchmark *prime_benchmark)
-{
-    json_t *prime_benchmark_json = json_object();
-    json_object_set_new(prime_benchmark_json, "cpu_model", json_string(prime_benchmark->cpu_model));
-    json_object_set_new(prime_benchmark_json, "os_info", json_string(prime_benchmark->os_info));
-    json_object_set_new(prime_benchmark_json, "digits", json_integer(prime_benchmark->digits));
-    json_object_set_new(prime_benchmark_json, "single_core_score", json_integer(prime_benchmark->single_core_score));
-    json_object_set_new(prime_benchmark_json, "multi_core_score", json_integer(prime_benchmark->multi_core_score));
-    json_object_set_new(prime_benchmark_json, "speedup", json_real(prime_benchmark->speedup));
-    json_object_set_new(prime_benchmark_json, "efficiency", json_real(prime_benchmark->efficiency));
-    json_object_set_new(prime_benchmark_json, "cpu_utilization", json_real(prime_benchmark->cpu_utilization));
-    json_object_set_new(prime_benchmark_json, "time", json_string(prime_benchmark->time));
-    json_object_set_new(prime_benchmark_json, "hostname", json_string(prime_benchmark->hostname));
-    return prime_benchmark_json;
 }
 
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
@@ -367,62 +376,98 @@ int main(int argc, char **argv)
         time_string,
         hostname};
 
-    // Connect to API endpoint: https://taipan-benchmarks.vercel.app/api/cpu-benchmarks
-    char *host = "https://taipan-benchmarks.vercel.app/api/cpu-benchmarks";
-    // Initialize libcurl
-    CURL *curl;
-    CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
+    char jsonString[1024];
+    primeBenchmarkToJson(prime_benchmark, jsonString);
 
-    if (res != CURLE_OK)
+    // Server information
+    const char *host = "taipan-benchmarks.vercel.app";
+    const char *path = "/api/cpu-benchmarks";
+    const int port = 443;
+
+    // Initialize OpenSSL
+    SSL_library_init();
+    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+    if (!ctx)
     {
-        fprintf(stderr, "curl_global_init() failed: %s\n", curl_easy_strerror(res));
-        return 1;
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
     }
 
-    // Create a curl handle
-    curl = curl_easy_init();
-
-    if (!curl)
+    // Create a socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
     {
-        fprintf(stderr, "curl_easy_init() failed\n");
-        curl_global_cleanup();
-        return 1;
+        error("Error opening socket");
     }
 
-    // Set the target URL
-    const char *url = "https://taipan-benchmarks.vercel.app/api/cpu-benchmarks";
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-
-    // Set the HTTP method to POST
-    curl_easy_setopt(curl, CURLOPT_POST, 1L);
-
-    // Set the POST data (replace with your JSON object)
-
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_dumps(structToJson(&prime_benchmark), 0));
-
-    printf("Sending request to %s\n", url);
-
-    // Set the Content-Type header
-    struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-    // Set the callback function to handle the server response
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-
-    // Perform the HTTP request
-    res = curl_easy_perform(curl);
-
-    printf("Request sent successfully!\n");
-
-    // Check for errors
-    if (res != CURLE_OK)
+    // Resolve the host IP address
+    struct hostent *server = gethostbyname(host);
+    if (server == NULL)
     {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        fprintf(stderr, "Error: Could not resolve host %s\n", host);
+        exit(EXIT_FAILURE);
     }
 
-    // Clean up
-    curl_easy_cleanup(curl);
-    curl_global_cleanup();
+    // Set up the server address structure
+    struct sockaddr_in server_addr;
+    bzero((char *)&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    server_addr.sin_port = htons(port);
+
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        error("Error connecting to server");
+    }
+
+    // Create an SSL connection
+    SSL *ssl = SSL_new(ctx);
+    SSL_set_fd(ssl, sockfd);
+    if (SSL_connect(ssl) != 1)
+    {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    // JSON object to send
+    const char *jsonObject = jsonString;
+
+    // Build the HTTP request
+    char request[1024];
+    snprintf(request, sizeof(request),
+             "POST %s HTTP/1.1\r\n"
+             "Host: %s\r\n"
+             "Content-Type: application/json\r\n"
+             "Content-Length: %zu\r\n"
+             "\r\n"
+             "%s",
+             path, host, strlen(jsonObject), jsonObject);
+
+    // Send the HTTP request
+    SSL_write(ssl, request, strlen(request));
+
+    // Read and print the response
+    char response[1024];
+    ssize_t bytesRead;
+    while ((bytesRead = SSL_read(ssl, response, sizeof(response) - 1)) > 0)
+    {
+        response[bytesRead] = '\0';
+        printf("%s", response);
+    }
+
+    if (bytesRead < 0)
+    {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    // Close the SSL connection and free resources
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+    SSL_CTX_free(ctx);
+
+    // Close the socket
+    close(sockfd);
     return 0;
 }
