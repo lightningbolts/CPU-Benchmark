@@ -40,6 +40,11 @@ struct prime_benchmark
     char *hostname;
 };
 
+void error(const char *msg) {
+    perror(msg);
+    exit(EXIT_FAILURE);
+}
+
 // Function to convert struct to JSON string
 void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
 {
