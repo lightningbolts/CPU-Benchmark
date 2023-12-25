@@ -164,22 +164,72 @@ int main(int argc, char **argv)
 {
     unsigned long digits = 50000000L;
     srand(time(NULL));
-    int processes = sysconf(_SC_NPROCESSORS_ONLN);
+    int processes;
     char cpu_model[256];
     char os_info[256];
 #ifdef _WIN32
-    FILE *cpu_info = popen("wmic cpu get name", "r");
-    fgets(cpu_model, sizeof(cpu_model), cpu_info);
-    pclose(cpu_info);
-    cpu_model[strcspn(cpu_model, "\n")] = 0;
-    FILE *os_info_file = popen("systeminfo | findstr /C:OS", "r");
-    fgets(os_info, sizeof(os_info), os_info_file);
-    pclose(os_info_file);
-    os_info[strcspn(os_info, "\n")] = 0;
-    os_info[strcspn(os_info, "\r")] = 0;
-    os_info = strtok(os_info, "Version:");
-    os_info = strtok(os_info, "                  ");
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+    processes = sysInfo.dwNumberOfProcessors;
+    // Get CPU model
+    char cpu_model_temp[256];
+    DWORD bufSize = sizeof(cpu_model_temp);
+    DWORD dwMHz = bufSize;
+    HKEY hKey;
+    LONG lError = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+                               "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+                               0,
+                               KEY_READ,
+                               &hKey);
+    if (lError != ERROR_SUCCESS)
+    {
+        printf("Error opening key");
+    }
+    // Query CPU model
+    RegQueryValueEx(hKey, "ProcessorNameString", NULL, NULL, (LPBYTE)cpu_model_temp, &bufSize);
+    strcpy(cpu_model, cpu_model_temp);
+
+    // Remove leading spaces or tabs
+//    while (*cpu_model == ' ' || *cpu_model == '\t')
+//    {
+//        cpu_model++; // Skip leading spaces or tabs
+//    }
+    // Declare model_info variable
+    char *model_info;
+    // Assign value to model_info
+    model_info = cpu_model;
+    // Declare cpu_display_model variable
+    char *cpu_display_model;
+    // Assign value to cpu_display_model
+    cpu_display_model = cpu_model;
+
+    // Get OS info
+    char os_info_temp[256];
+    DWORD bufSize2 = sizeof(os_info_temp);
+    HKEY hKey2;
+    LONG lError2 = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+                               "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                               0,
+                               KEY_READ,
+                               &hKey2);
+    if (lError2 != ERROR_SUCCESS)
+    {
+        printf("Error opening key");
+    }
+    // Query OS info
+    RegQueryValueEx(hKey2, "ProductName", NULL, NULL, (LPBYTE)os_info_temp, &bufSize2);
+    strcpy(os_info, os_info_temp);
+    // Remove leading spaces or tabs
+//    while (*os_info == ' ' || *os_info == '\t')
+//    {
+//        os_info++; // Skip leading spaces or tabs
+//    }
+    // Declare os_display variable
+    char *os_display;
+    // Assign value to os_display
+    os_display = os_info;
 #elif __linux__
+    processes = sysconf(_SC_NPROCESSORS_ONLN);
     // Get CPU model
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
 
@@ -248,7 +298,7 @@ int main(int argc, char **argv)
 
 #elif __APPLE__
 #include <sys/sysctl.h>
-
+    processes = sysconf(_SC_NPROCESSORS_ONLN);
     // Query for CPU model
     size_t len = sizeof(cpu_model);
     sysctlbyname("machdep.cpu.brand_string", &cpu_model, &len, NULL, 0);
@@ -296,7 +346,14 @@ int main(int argc, char **argv)
     strftime(time_string, sizeof(time_string), "%c", &tm);
 
     char hostname[256];
+    #ifdef __linux__
     gethostname(hostname, sizeof(hostname));
+    #elif __APPLE__
+    gethostname(hostname, sizeof(hostname));
+    #elif _WIN32
+    DWORD size = sizeof(hostname);
+    GetComputerNameA(hostname, &size);
+    #endif
 
     struct prime_benchmark prime_benchmark = {
         cpu_display_model,
