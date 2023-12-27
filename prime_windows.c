@@ -44,15 +44,15 @@ struct prime_benchmark
     double cpu_utilization;
     char *time;
     char *hostname;
+    char *key;
     int processes;
 };
 
-void error(const char *msg) {
+void error(const char *msg)
+{
     perror(msg);
     exit(EXIT_FAILURE);
 }
-
-void report_and_exit(const char* msg);
 
 // Function to convert struct to JSON string
 void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
@@ -68,14 +68,14 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
                         "\"cpu_utilization\":%lf,"
                         "\"time\":\"%s\","
                         "\"hostname\":\"%s\","
+                        "\"key\":\"%s\","
                         "\"processes\":%d"
                         "}",
             benchmark.cpu_model, benchmark.os_info, benchmark.digits,
             benchmark.single_core_score, benchmark.multi_core_score,
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
-            benchmark.time, benchmark.hostname, benchmark.processes);
+            benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
 }
-
 /* Thread function for counting primes */
 void *
 prime_check(void *_args)
@@ -364,6 +364,14 @@ int main(int argc, char **argv)
     printf("Efficiency for %d digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
     printf("CPU utilization for %d digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
 
+    // Generate 32 digit hex key
+    char key[33];
+    for (int i = 0; i < 32; i++)
+    {
+        key[i] = "0123456789ABCDEF"[rand() % 16];
+    }
+    key[32] = '\0';
+
     time_t t = time(NULL);
     struct tm tm = *gmtime(&t);
     char time_string[64];
@@ -390,8 +398,8 @@ int main(int argc, char **argv)
         100 - (execution_time_multi_core / execution_time_single_core) * 100,
         time_string,
         hostname,
-        processes
-        };
+        key,
+        processes};
 
     char jsonString[1024];
     primeBenchmarkToJson(prime_benchmark, jsonString);
@@ -399,21 +407,24 @@ int main(int argc, char **argv)
     // Server information
     // const char* API_URL = "taipan-benchmarks.vercel.app";
     // const char* API_PATH = "/api/cpu-benchmarks";
-    const char* JSON_PAYLOAD = jsonString;
+    const char *JSON_PAYLOAD = jsonString;
     WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
         report_and_exit("WSAStartup failed");
     }
 
     // Create a TCP socket
     SOCKET sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == INVALID_SOCKET) {
+    if (sockfd == INVALID_SOCKET)
+    {
         report_and_exit("Socket creation failed");
     }
 
     // Resolve the server's address
-    struct hostent* server = gethostbyname(API_URL);
-    if (server == NULL) {
+    struct hostent *server = gethostbyname(API_URL);
+    if (server == NULL)
+    {
         report_and_exit("Error resolving hostname");
     }
 
@@ -421,29 +432,33 @@ int main(int argc, char **argv)
     struct sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(443); // HTTPS port
-    serverAddr.sin_addr.s_addr = *((unsigned long*)server->h_addr);
+    serverAddr.sin_addr.s_addr = *((unsigned long *)server->h_addr);
 
     // Connect to the server
-    if (connect(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+    if (connect(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
+    {
         report_and_exit("Connection failed");
     }
 
     // Initialize OpenSSL
     SSL_library_init();
-    SSL_CTX* ctx = SSL_CTX_new(SSLv23_client_method());
-    if (!ctx) {
+    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+    if (!ctx)
+    {
         report_and_exit("SSL_CTX_new error");
     }
 
     // Create an SSL connection
-    SSL* ssl = SSL_new(ctx);
-    if (!ssl) {
+    SSL *ssl = SSL_new(ctx);
+    if (!ssl)
+    {
         report_and_exit("SSL_new error");
     }
 
     // Set up the SSL connection
     SSL_set_fd(ssl, sockfd);
-    if (SSL_connect(ssl) != 1) {
+    if (SSL_connect(ssl) != 1)
+    {
         report_and_exit("SSL_connect error");
     }
 
@@ -455,20 +470,41 @@ int main(int argc, char **argv)
                      "Content-Length: %ld\r\n"
                      "\r\n"
                      "%s",
-                     API_PATH, API_URL, strlen(JSON_PAYLOAD), JSON_PAYLOAD);
+            API_PATH, API_URL, strlen(JSON_PAYLOAD), JSON_PAYLOAD);
 
     // Send the HTTP request
-    if (SSL_write(ssl, request, strlen(request)) <= 0) {
+    if (SSL_write(ssl, request, strlen(request)) <= 0)
+    {
         report_and_exit("SSL_write error");
     }
 
     // Receive and print the response
     char buffer[4096];
     int bytes_read;
-    while ((bytes_read = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
-        fwrite(buffer, 1, bytes_read, stdout);
+    while (1)
+    {
+        bytes_read = SSL_read(ssl, buffer, sizeof(buffer));
+        if (bytes_read <= 10)
+        {
+            break;
+        }
+        printf("%.*s", bytes_read, buffer);
     }
-
+    // Get object id from response
+    char *object_id = strstr(buffer, "_id");
+    // Display two urls: one for viewing the benchmark and one for claiming the benchmark
+    // View benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>
+    // Claim benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>?key=<key>
+    char view_benchmark_url[256];
+    char claim_benchmark_url[256];
+    snprintf(view_benchmark_url, sizeof(view_benchmark_url),
+             "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s",
+             24, object_id + 6);
+    snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
+             "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
+             24, object_id + 6, key);
+    printf("View benchmark url: %s\n", view_benchmark_url);
+    printf("Claim benchmark url: %s\n", claim_benchmark_url);
     // Clean up
     SSL_shutdown(ssl);
     SSL_free(ssl);
@@ -479,7 +515,8 @@ int main(int argc, char **argv)
     return EXIT_SUCCESS;
 }
 
-void report_and_exit(const char* msg) {
+void report_and_exit(const char *msg)
+{
     fprintf(stderr, "%s\n", msg);
     exit(EXIT_FAILURE);
 }

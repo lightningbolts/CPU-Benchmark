@@ -38,6 +38,7 @@ struct prime_benchmark
     double cpu_utilization;
     char *time;
     char *hostname;
+    char *key;
     int processes;
 };
 
@@ -61,12 +62,13 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
                         "\"cpu_utilization\":%lf,"
                         "\"time\":\"%s\","
                         "\"hostname\":\"%s\","
+                        "\"key\":\"%s\","
                         "\"processes\":%d"
                         "}",
             benchmark.cpu_model, benchmark.os_info, benchmark.digits,
             benchmark.single_core_score, benchmark.multi_core_score,
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
-            benchmark.time, benchmark.hostname, benchmark.processes);
+            benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
 }
 
 /* Thread function for counting primes */
@@ -357,6 +359,13 @@ int main(int argc, char **argv)
     printf("Efficiency for %d digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
     printf("CPU utilization for %d digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
 
+    // Generate 32 digit hex key
+    char key[33];
+    for (int i = 0; i < 32; i++)
+    {
+        key[i] = "0123456789ABCDEF"[rand() % 16];
+    }
+    key[32] = '\0';
     time_t t = time(NULL);
     struct tm tm = *gmtime(&t);
     char time_string[64];
@@ -383,6 +392,7 @@ int main(int argc, char **argv)
         100 - (execution_time_multi_core / execution_time_single_core) * 100,
         time_string,
         hostname,
+        key,
         processes};
 
     char jsonString[1024];
@@ -458,19 +468,34 @@ int main(int argc, char **argv)
     SSL_write(ssl, request, strlen(request));
 
     // Read and print the response
-    char response[1024];
-    ssize_t bytesRead;
-    while ((bytesRead = SSL_read(ssl, response, sizeof(response) - 1)) > 0)
+    char response[4096];
+    int bytesRead;
+    while (1)
     {
-        response[bytesRead] = '\0';
-        printf("%s", response);
+        bytesRead = SSL_read(ssl, response, sizeof(response));
+        if (bytesRead <= 10)
+        {
+            break;
+        }
+        printf("%d", bytesRead);
+        printf("%.*s", bytesRead, response);
     }
 
-    if (bytesRead < 0)
-    {
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
+    // Get object id from response
+    char *object_id = strstr(response, "_id");
+    // Display two urls: one for viewing the benchmark and one for claiming the benchmark
+    // View benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>
+    // Claim benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>?key=<key>
+    char view_benchmark_url[256];
+    char claim_benchmark_url[256];
+    snprintf(view_benchmark_url, sizeof(view_benchmark_url),
+             "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s",
+             24, object_id + 6);
+    snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
+             "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
+             24, object_id + 6, key);
+    printf("View benchmark url: %s\n", view_benchmark_url);
+    printf("Claim benchmark url: %s\n", claim_benchmark_url);
 
     // Close the SSL connection and free resources
     SSL_shutdown(ssl);
