@@ -38,9 +38,11 @@ struct prime_benchmark
     double cpu_utilization;
     char *time;
     char *hostname;
+    int processes;
 };
 
-void error(const char *msg) {
+void error(const char *msg)
+{
     perror(msg);
     exit(EXIT_FAILURE);
 }
@@ -58,12 +60,13 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
                         "\"efficiency\":%lf,"
                         "\"cpu_utilization\":%lf,"
                         "\"time\":\"%s\","
-                        "\"hostname\":\"%s\""
+                        "\"hostname\":\"%s\","
+                        "\"processes\":%d"
                         "}",
             benchmark.cpu_model, benchmark.os_info, benchmark.digits,
             benchmark.single_core_score, benchmark.multi_core_score,
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
-            benchmark.time, benchmark.hostname);
+            benchmark.time, benchmark.hostname, benchmark.processes);
 }
 
 /* Thread function for counting primes */
@@ -379,7 +382,8 @@ int main(int argc, char **argv)
         (execution_time_single_core / execution_time_multi_core) / processes,
         100 - (execution_time_multi_core / execution_time_single_core) * 100,
         time_string,
-        hostname};
+        hostname,
+        processes};
 
     char jsonString[1024];
     primeBenchmarkToJson(prime_benchmark, jsonString);
@@ -437,6 +441,7 @@ int main(int argc, char **argv)
 
     // JSON object to send
     const char *jsonObject = jsonString;
+    printf("Sending JSON object:\n%s\n", jsonObject);
 
     // Build the HTTP request
     char request[1024];
