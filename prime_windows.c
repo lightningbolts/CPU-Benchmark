@@ -37,15 +37,16 @@ struct prime_benchmark
     char *cpu_model;
     char *os_info;
     int64_t digits;
-    int single_core_score;
-    int multi_core_score;
+    int64_t single_core_score;
+    int64_t multi_core_score;
     double speedup;
     double efficiency;
     double cpu_utilization;
     char *time;
     char *hostname;
     char *key;
-    int processes;
+    char *creator;
+    int64_t processes;
 };
 
 void error(const char *msg)
@@ -69,12 +70,13 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
                         "\"time\":\"%s\","
                         "\"hostname\":\"%s\","
                         "\"key\":\"%s\","
+                        "\"creator\":\"%s\","
                         "\"processes\":%d"
                         "}",
             benchmark.cpu_model, benchmark.os_info, benchmark.digits,
             benchmark.single_core_score, benchmark.multi_core_score,
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
-            benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
+            benchmark.time, benchmark.hostname, benchmark.key, benchmark.creator, benchmark.processes);
 }
 /* Thread function for counting primes */
 void *
@@ -399,6 +401,7 @@ int main(int argc, char **argv)
         time_string,
         hostname,
         key,
+        "658456be6e23241d7bfd4160",
         processes};
 
     char jsonString[1024];
