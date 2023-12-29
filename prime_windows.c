@@ -45,7 +45,6 @@ struct prime_benchmark
     char *time;
     char *hostname;
     char *key;
-    char *creator;
     int64_t processes;
 };
 
@@ -70,13 +69,12 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
                         "\"time\":\"%s\","
                         "\"hostname\":\"%s\","
                         "\"key\":\"%s\","
-                        "\"creator\":\"%s\","
                         "\"processes\":%d"
                         "}",
             benchmark.cpu_model, benchmark.os_info, benchmark.digits,
             benchmark.single_core_score, benchmark.multi_core_score,
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
-            benchmark.time, benchmark.hostname, benchmark.key, benchmark.creator, benchmark.processes);
+            benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
 }
 /* Thread function for counting primes */
 void *
@@ -401,7 +399,6 @@ int main(int argc, char **argv)
         time_string,
         hostname,
         key,
-        "658456be6e23241d7bfd4160",
         processes};
 
     char jsonString[1024];
@@ -499,15 +496,15 @@ int main(int argc, char **argv)
     // View benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>
     // Claim benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>?key=<key>
     char view_benchmark_url[256];
-    char claim_benchmark_url[256];
+    // char claim_benchmark_url[256];
     snprintf(view_benchmark_url, sizeof(view_benchmark_url),
              "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s",
              24, object_id + 6);
-    snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
-             "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
-             24, object_id + 6, key);
+    // snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
+    //          "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
+    //          24, object_id + 6, key);
     printf("View benchmark url: %s\n", view_benchmark_url);
-    printf("Claim benchmark url: %s\n", claim_benchmark_url);
+    // printf("Claim benchmark url: %s\n", claim_benchmark_url);
     // Clean up
     SSL_shutdown(ssl);
     SSL_free(ssl);
