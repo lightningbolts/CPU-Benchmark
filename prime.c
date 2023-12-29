@@ -181,7 +181,7 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 int main(int argc, char **argv)
 {
-    int64_t digits = 50000000;
+    int64_t digits = 50000000L;
     srand(time(NULL));
     int processes;
     char cpu_model[256];
