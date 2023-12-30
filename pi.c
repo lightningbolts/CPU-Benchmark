@@ -22,6 +22,52 @@
 
 #define NUM_POINTS 10000000
 
+struct prime_benchmark
+{
+    /* data */
+    char *cpu_model;
+    char *os_info;
+    int64_t digits;
+    int64_t single_core_score;
+    int64_t multi_core_score;
+    double speedup;
+    double efficiency;
+    double cpu_utilization;
+    char *time;
+    char *hostname;
+    char *key;
+    int64_t processes;
+};
+
+void error(const char *msg)
+{
+    perror(msg);
+    exit(EXIT_FAILURE);
+}
+
+// Function to convert struct to JSON string
+void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
+{
+    sprintf(jsonString, "{"
+                        "\"cpu_model\":\"%s\","
+                        "\"os_info\":\"%s\","
+                        "\"digits\":%" PRId64 ","
+                        "\"single_core_score\":%d,"
+                        "\"multi_core_score\":%d,"
+                        "\"speedup\":%lf,"
+                        "\"efficiency\":%lf,"
+                        "\"cpu_utilization\":%lf,"
+                        "\"time\":\"%s\","
+                        "\"hostname\":\"%s\","
+                        "\"key\":\"%s\","
+                        "\"processes\":%d"
+                        "}",
+            benchmark.cpu_model, benchmark.os_info, benchmark.digits,
+            benchmark.single_core_score, benchmark.multi_core_score,
+            benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
+            benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
+}
+
 struct ThreadData
 {
     int thread_id;
@@ -76,61 +122,6 @@ double calculate_pi_with_multiprocessing(int digits, int processes)
         points_in_circle += WEXITSTATUS(status);
     }
     return 4 * (double)points_in_circle / digits;
-}
-
-/* Each thread gets a start and end number and returns the number
-   Of primes in that range */
-struct range
-{
-    int64_t start;
-    int64_t end;
-    int64_t count;
-};
-
-struct prime_benchmark
-{
-    /* data */
-    char *cpu_model;
-    char *os_info;
-    int64_t digits;
-    int64_t single_core_score;
-    int64_t multi_core_score;
-    double speedup;
-    double efficiency;
-    double cpu_utilization;
-    char *time;
-    char *hostname;
-    char *key;
-    int64_t processes;
-};
-
-void error(const char *msg)
-{
-    perror(msg);
-    exit(EXIT_FAILURE);
-}
-
-// Function to convert struct to JSON string
-void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
-{
-    sprintf(jsonString, "{"
-                        "\"cpu_model\":\"%s\","
-                        "\"os_info\":\"%s\","
-                        "\"digits\":%" PRId64 ","
-                        "\"single_core_score\":%d,"
-                        "\"multi_core_score\":%d,"
-                        "\"speedup\":%lf,"
-                        "\"efficiency\":%lf,"
-                        "\"cpu_utilization\":%lf,"
-                        "\"time\":\"%s\","
-                        "\"hostname\":\"%s\","
-                        "\"key\":\"%s\","
-                        "\"processes\":%d"
-                        "}",
-            benchmark.cpu_model, benchmark.os_info, benchmark.digits,
-            benchmark.single_core_score, benchmark.multi_core_score,
-            benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
-            benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
 }
 
 double calculate_execution_time(int digits, int num_threads)

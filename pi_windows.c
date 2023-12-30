@@ -7,76 +7,19 @@
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
-#include <sys/socket.h>
-#include <netdb.h>
+#include <Winsock2.h>
+#include <windows.h>
 #include <inttypes.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <pthread.h>
-#include <sys/wait.h> // for wait
+#include <openssl/bio.h>
 #include <unistd.h>   // for fork
+#include <sys/types.h> // for pid_t
 #define MAP_ANONYMOUS
 #define MAX_BUFFER_SIZE 1024
 
 #define NUM_POINTS 10000000
-
-struct ThreadData
-{
-    int thread_id;
-    int points_in_circle;
-};
-
-double monte_carlo_pi(int points)
-{
-    int inside_circle = 0;
-    for (int i = 0; i < points; i++)
-    {
-        double x = (double)rand() / RAND_MAX;
-        double y = (double)rand() / RAND_MAX;
-        double distance = x * x + y * y;
-        if (distance <= 1)
-        {
-            inside_circle++;
-        }
-    }
-    return inside_circle;
-}
-
-double calculate_pi_with_multiprocessing(int digits, int processes)
-{
-    int points_per_process = digits / processes;
-    int points_left = digits % processes;
-    int points = points_per_process;
-    int points_in_circle = 0;
-    int status;
-    pid_t pid;
-    for (int i = 0; i < processes; i++)
-    {
-        if (points_left > 0)
-        {
-            points = points_per_process + 1;
-            points_left--;
-        }
-        else
-        {
-            points = points_per_process;
-        }
-        pid = fork();
-        if (pid == 0)
-        {
-            points_in_circle = monte_carlo_pi(points);
-            exit(points_in_circle);
-        }
-    }
-    for (int i = 0; i < processes; i++)
-    {
-        wait(&status);
-        points_in_circle += WEXITSTATUS(status);
-    }
-    return 4 * (double)points_in_circle / digits;
-}
 
 /* Each thread gets a start and end number and returns the number
    Of primes in that range */
@@ -131,6 +74,106 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
             benchmark.single_core_score, benchmark.multi_core_score,
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
             benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
+}
+
+struct ThreadData
+{
+    int thread_id;
+    int points_in_circle;
+};
+
+double monte_carlo_pi(int points)
+{
+    int inside_circle = 0;
+    for (int i = 0; i < points; i++)
+    {
+        double x = (double)rand() / RAND_MAX;
+        double y = (double)rand() / RAND_MAX;
+        double distance = x * x + y * y;
+        if (distance <= 1)
+        {
+            inside_circle++;
+        }
+    }
+    return inside_circle;
+}
+
+double calculate_pi_with_multiprocessing(int digits, int processes)
+{
+    int points_per_process = digits / processes;
+    int points_left = digits % processes;
+    int points = points_per_process;
+    int points_in_circle = 0;
+
+    HANDLE *hProcesses = (HANDLE *)malloc(processes * sizeof(HANDLE));
+
+    for (int i = 0; i < processes; i++)
+    {
+        if (points_left > 0)
+        {
+            points = points_per_process + 1;
+            points_left--;
+        }
+        else
+        {
+            points = points_per_process;
+        }
+
+        // Create a new process
+        PROCESS_INFORMATION pi;
+        STARTUPINFO si;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        ZeroMemory(&pi, sizeof(pi));
+
+        char commandLine[256];
+        sprintf(commandLine, "child_process.exe %d", points);
+
+        if (!CreateProcess(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+{
+    printf("Error creating process %d, error code: %lu\n", i, GetLastError());
+    LPVOID lpMsgBuf;
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        GetLastError(),
+        0, // Default language
+        (LPWSTR)&lpMsgBuf,
+        0,
+        NULL
+    );
+    wprintf(L"Error message: %s\n", lpMsgBuf);
+    LocalFree(lpMsgBuf);
+    return 1;
+}
+
+
+        // Close process and thread handles
+        CloseHandle(pi.hThread);
+        hProcesses[i] = pi.hProcess;
+    }
+
+    // Wait for all child processes to finish
+    WaitForMultipleObjects(processes, hProcesses, TRUE, INFINITE);
+
+    for (int i = 0; i < processes; i++)
+    {
+        DWORD exitCode;
+        GetExitCodeProcess(hProcesses[i], &exitCode);
+        points_in_circle += (int)exitCode;
+    }
+
+    // Close process handles
+    for (int i = 0; i < processes; i++)
+    {
+        CloseHandle(hProcesses[i]);
+    }
+
+    free(hProcesses);
+
+    return 4 * (double)points_in_circle / digits;
 }
 
 double calculate_execution_time(int digits, int num_threads)
