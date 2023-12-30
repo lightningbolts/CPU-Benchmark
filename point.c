@@ -117,7 +117,7 @@ double calculate_execution_time(int64_t digits, int num_threads)
 
 int64_t calculate_score(int64_t digits, double execution_time)
 {
-    int64_t multi_core_score = (digits / execution_time) / 666666 * 1.123348 * 1.078431;
+    int64_t multi_core_score = (digits / execution_time) / 666666 * 1.213;
     return round(multi_core_score);
 }
 
@@ -348,111 +348,111 @@ int main(int argc, char **argv)
     char jsonString[1024];
     pointBenchmarkToJson(prime_benchmark, jsonString);
 
-    // // Server information
-    // const char *host = "taipan-benchmarks.vercel.app";
-    // const char *path = "/api/cpu-benchmarks";
-    // const int port = 443;
+    // Server information
+    const char *host = "taipan-benchmarks.vercel.app";
+    const char *path = "/api/cpu-benchmarks";
+    const int port = 443;
 
-    // // Initialize OpenSSL
-    // SSL_library_init();
-    // SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-    // if (!ctx)
-    // {
-    //     ERR_print_errors_fp(stderr);
-    //     exit(EXIT_FAILURE);
-    // }
+    // Initialize OpenSSL
+    SSL_library_init();
+    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+    if (!ctx)
+    {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
 
-    // // Create a socket
-    // int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    // if (sockfd < 0)
-    // {
-    //     error("Error opening socket");
-    // }
+    // Create a socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        error("Error opening socket");
+    }
 
-    // // Resolve the host IP address
-    // struct hostent *server = gethostbyname(host);
-    // if (server == NULL)
-    // {
-    //     fprintf(stderr, "Error: Could not resolve host %s\n", host);
-    //     exit(EXIT_FAILURE);
-    // }
+    // Resolve the host IP address
+    struct hostent *server = gethostbyname(host);
+    if (server == NULL)
+    {
+        fprintf(stderr, "Error: Could not resolve host %s\n", host);
+        exit(EXIT_FAILURE);
+    }
 
-    // // Set up the server address structure
-    // struct sockaddr_in server_addr;
-    // bzero((char *)&server_addr, sizeof(server_addr));
-    // server_addr.sin_family = AF_INET;
-    // bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
-    // server_addr.sin_port = htons(port);
+    // Set up the server address structure
+    struct sockaddr_in server_addr;
+    bzero((char *)&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    server_addr.sin_port = htons(port);
 
-    // // Connect to the server
-    // if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    // {
-    //     error("Error connecting to server");
-    // }
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        error("Error connecting to server");
+    }
 
-    // // Create an SSL connection
-    // SSL *ssl = SSL_new(ctx);
-    // SSL_set_fd(ssl, sockfd);
-    // if (SSL_connect(ssl) != 1)
-    // {
-    //     ERR_print_errors_fp(stderr);
-    //     exit(EXIT_FAILURE);
-    // }
+    // Create an SSL connection
+    SSL *ssl = SSL_new(ctx);
+    SSL_set_fd(ssl, sockfd);
+    if (SSL_connect(ssl) != 1)
+    {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
 
-    // // JSON object to send
-    // const char *jsonObject = jsonString;
-    // printf("Sending JSON object:\n%s\n", jsonObject);
+    // JSON object to send
+    const char *jsonObject = jsonString;
+    printf("Sending JSON object:\n%s\n", jsonObject);
 
-    // // Build the HTTP request
-    // char request[1024];
-    // snprintf(request, sizeof(request),
-    //          "POST %s HTTP/1.1\r\n"
-    //          "Host: %s\r\n"
-    //          "Content-Type: application/json\r\n"
-    //          "Content-Length: %zu\r\n"
-    //          "\r\n"
-    //          "%s",
-    //          path, host, strlen(jsonObject), jsonObject);
+    // Build the HTTP request
+    char request[1024];
+    snprintf(request, sizeof(request),
+             "POST %s HTTP/1.1\r\n"
+             "Host: %s\r\n"
+             "Content-Type: application/json\r\n"
+             "Content-Length: %zu\r\n"
+             "\r\n"
+             "%s",
+             path, host, strlen(jsonObject), jsonObject);
 
-    // // Send the HTTP request
-    // SSL_write(ssl, request, strlen(request));
+    // Send the HTTP request
+    SSL_write(ssl, request, strlen(request));
 
-    // // Read and print the response
-    // char response[4096];
-    // int bytesRead;
-    // while (1)
-    // {
-    //     bytesRead = SSL_read(ssl, response, sizeof(response));
-    //     if (bytesRead <= 10)
-    //     {
-    //         break;
-    //     }
-    //     printf("%d", bytesRead);
-    //     printf("%.*s", bytesRead, response);
-    // }
+    // Read and print the response
+    char response[4096];
+    int bytesRead;
+    while (1)
+    {
+        bytesRead = SSL_read(ssl, response, sizeof(response));
+        if (bytesRead <= 10)
+        {
+            break;
+        }
+        printf("%d", bytesRead);
+        printf("%.*s", bytesRead, response);
+    }
 
-    // // Get object id from response
-    // char *object_id = strstr(response, "_id");
-    // // Display two urls: one for viewing the benchmark and one for claiming the benchmark
-    // // View benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>
-    // // Claim benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>?key=<key>
-    // char view_benchmark_url[256];
-    // // char claim_benchmark_url[256];
-    // snprintf(view_benchmark_url, sizeof(view_benchmark_url),
-    //          "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s",
-    //          24, object_id + 6);
-    // // snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
-    // //          "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
-    // //          24, object_id + 6, key);
-    // printf("View benchmark url: %s\n", view_benchmark_url);
-    // // printf("Claim benchmark url: %s\n", claim_benchmark_url);
+    // Get object id from response
+    char *object_id = strstr(response, "_id");
+    // Display two urls: one for viewing the benchmark and one for claiming the benchmark
+    // View benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>
+    // Claim benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>?key=<key>
+    char view_benchmark_url[256];
+    // char claim_benchmark_url[256];
+    snprintf(view_benchmark_url, sizeof(view_benchmark_url),
+             "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s",
+             24, object_id + 6);
+    // snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
+    //          "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
+    //          24, object_id + 6, key);
+    printf("View benchmark url: %s\n", view_benchmark_url);
+    // printf("Claim benchmark url: %s\n", claim_benchmark_url);
 
-    // // Close the SSL connection and free resources
-    // SSL_shutdown(ssl);
-    // SSL_free(ssl);
-    // SSL_CTX_free(ctx);
+    // Close the SSL connection and free resources
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+    SSL_CTX_free(ctx);
 
-    // // Close the socket
-    // close(sockfd);
+    // Close the socket
+    close(sockfd);
     return 0;
 }
