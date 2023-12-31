@@ -140,7 +140,7 @@ double calculate_execution_time(int64_t digits, int num_threads)
 
 int64_t calculate_score(int64_t digits, double execution_time)
 {
-    int64_t multi_core_score = (digits / execution_time) / (666666 * 3.5);
+    int64_t multi_core_score = (digits / execution_time) / (666666 * 2.5);
     return round(multi_core_score);
 }
 
