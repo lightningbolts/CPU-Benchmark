@@ -223,7 +223,7 @@ double calculate_execution_time_point(int64_t digits, int num_threads)
 
 int64_t calculate_score_point(int64_t digits, double execution_time)
 {
-    int64_t multi_core_score = (digits / execution_time) / (666666 * 2);
+    int64_t multi_core_score = (digits / execution_time) / (666666 * 2.2);
     return round(multi_core_score);
 }
 
@@ -431,8 +431,8 @@ int main(int argc, char **argv)
     int64_t score_multi_core_point = calculate_score_point(digits_point, execution_time_multi_core_point);
 
     // Average the scores
-    int64_t score_single_core = (10 * score_single_core_prime + score_single_core_point) / 11;
-    int64_t score_multi_core = (2 * score_multi_core_prime + score_multi_core_point) / 3;
+    int64_t score_single_core = (2.5 * score_single_core_prime + score_single_core_point) / 3.5;
+    int64_t score_multi_core = (2.5 * score_multi_core_prime + score_multi_core_point) / 3.5;
 
     // Average the execution times
     double execution_time_single_core = (execution_time_single_core_prime + execution_time_single_core_point) / 2;
