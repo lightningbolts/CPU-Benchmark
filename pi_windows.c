@@ -25,9 +25,9 @@
    Of primes in that range */
 struct range
 {
-    int64_t start;
-    int64_t end;
-    int64_t count;
+    long long start;
+    long long end;
+    long long count;
 };
 
 struct prime_benchmark
@@ -35,16 +35,16 @@ struct prime_benchmark
     /* data */
     char *cpu_model;
     char *os_info;
-    int64_t digits;
-    int64_t single_core_score;
-    int64_t multi_core_score;
+    long long digits;
+    long long single_core_score;
+    long long multi_core_score;
     double speedup;
     double efficiency;
     double cpu_utilization;
     char *time;
     char *hostname;
     char *key;
-    int64_t processes;
+    long long processes;
 };
 
 void error(const char *msg)
@@ -82,10 +82,10 @@ struct ThreadData
     int points_in_circle;
 };
 
-double monte_carlo_pi(int points)
+double monte_carlo_pi(long long points)
 {
-    int inside_circle = 0;
-    for (int i = 0; i < points; i++)
+    long long inside_circle = 0;
+    for (long long i = 0; i < points; i++)
     {
         double x = (double)rand() / RAND_MAX;
         double y = (double)rand() / RAND_MAX;
@@ -98,85 +98,31 @@ double monte_carlo_pi(int points)
     return inside_circle;
 }
 
-double calculate_pi_with_multiprocessing(int digits, int processes)
+double calculate_pi_with_multiprocessing(long long digits, long long processes)
 {
-    int points_per_process = digits / processes;
-    int points_left = digits % processes;
-    int points = points_per_process;
-    int points_in_circle = 0;
-
-    HANDLE *hProcesses = (HANDLE *)malloc(processes * sizeof(HANDLE));
-
-    for (int i = 0; i < processes; i++)
+    long long points_per_process = digits / processes;
+    long long points_left = digits % processes;
+    pthread_t threads[processes];
+    struct ThreadData thread_data[processes];
+    for (long long i = 0; i < processes; i++)
     {
-        if (points_left > 0)
-        {
-            points = points_per_process + 1;
-            points_left--;
-        }
-        else
-        {
-            points = points_per_process;
-        }
-
-        // Create a new process
-        PROCESS_INFORMATION pi;
-        STARTUPINFO si;
-        ZeroMemory(&si, sizeof(si));
-        si.cb = sizeof(si);
-        ZeroMemory(&pi, sizeof(pi));
-
-        char commandLine[256];
-        sprintf(commandLine, "child_process.exe %d", points);
-
-        if (!CreateProcess(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
-{
-    printf("Error creating process %d, error code: %lu\n", i, GetLastError());
-    LPVOID lpMsgBuf;
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER |
-        FORMAT_MESSAGE_FROM_SYSTEM |
-        FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL,
-        GetLastError(),
-        0, // Default language
-        (LPWSTR)&lpMsgBuf,
-        0,
-        NULL
-    );
-    wprintf(L"Error message: %s\n", lpMsgBuf);
-    LocalFree(lpMsgBuf);
-    return 1;
+        thread_data[i].thread_id = i;
+        thread_data[i].points_in_circle = 0;
+        pthread_create(&threads[i], NULL, monte_carlo_pi, points_per_process);
+    }
+    for (long long i = 0; i < processes; i++)
+    {
+        pthread_join(threads[i], NULL);
+    }
+    long long total_points_in_circle = 0;
+    for (long long i = 0; i < processes; i++)
+    {
+        total_points_in_circle += thread_data[i].points_in_circle;
+    }
+    return total_points_in_circle;
 }
 
-
-        // Close process and thread handles
-        CloseHandle(pi.hThread);
-        hProcesses[i] = pi.hProcess;
-    }
-
-    // Wait for all child processes to finish
-    WaitForMultipleObjects(processes, hProcesses, TRUE, INFINITE);
-
-    for (int i = 0; i < processes; i++)
-    {
-        DWORD exitCode;
-        GetExitCodeProcess(hProcesses[i], &exitCode);
-        points_in_circle += (int)exitCode;
-    }
-
-    // Close process handles
-    for (int i = 0; i < processes; i++)
-    {
-        CloseHandle(hProcesses[i]);
-    }
-
-    free(hProcesses);
-
-    return 4 * (double)points_in_circle / digits;
-}
-
-double calculate_execution_time(int digits, int num_threads)
+double calculate_execution_time(long long digits, long long num_threads)
 {
 
     struct timeval start, end;
@@ -188,9 +134,9 @@ double calculate_execution_time(int digits, int num_threads)
     return time_taken;
 }
 
-int calculate_score(int digits, double execution_time)
+int64_t calculate_score(int64_t digits, double execution_time)
 {
-    int multi_core_score = (digits / execution_time) / (666 * 37);
+    int64_t multi_core_score = (digits / execution_time) / (666 * 58);
     return round(multi_core_score);
 }
 
@@ -204,7 +150,7 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 int main(int argc, char **argv)
 {
-    int64_t digits = 2000000000;
+    int64_t digits = 3000000000;
     srand(time(NULL));
     int processes;
     char cpu_model[256];
@@ -374,13 +320,13 @@ int main(int argc, char **argv)
     printf("\n");
     printf(os_display);
     printf("\n");
-    printf("Execution time for %d digits with single core is %f\n", digits, execution_time_single_core);
-    printf("Execution time for %d digits with %d cores is %f\n", digits, processes, execution_time_multi_core);
-    printf("Single core score for %d digits is %d\n", digits, calculate_score(digits, execution_time_single_core));
-    printf("Multi core score for %d digits is %d\n", digits, calculate_score(digits, execution_time_multi_core));
-    printf("Speedup for %d digits is %f\n", digits, execution_time_single_core / execution_time_multi_core);
-    printf("Efficiency for %d digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
-    printf("CPU utilization for %d digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
+    printf("Execution time for %lld digits with single core is %f\n", digits, execution_time_single_core);
+    printf("Execution time for %lld digits with %lld cores is %f\n", digits, processes, execution_time_multi_core);
+    printf("Single core score for %lld digits is %lld\n", digits, calculate_score(digits, execution_time_single_core));
+    printf("Multi core score for %lld digits is %lld\n", digits, calculate_score(digits, execution_time_multi_core));
+    printf("Speedup for %lld digits is %f\n", digits, execution_time_single_core / execution_time_multi_core);
+    printf("Efficiency for %lld digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
+    printf("CPU utilization for %lld digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
 
     // Generate 32 digit hex key
     char key[33];
