@@ -76,63 +76,71 @@ void pointBenchmarkToJson(struct point_benchmark benchmark, char *jsonString)
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
             benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
 }
-int64_t increment(int64_t x)
+typedef struct
 {
-    return x + 1;
+    int64_t n;
+    int64_t result;
+} ThreadData;
+
+int64_t increment(int64_t n)
+{
+    return n + 1;
 }
 
-int64_t add_to_number(int64_t n)
+DWORD WINAPI add_to_number(LPVOID param)
 {
-    int64_t i;
-    int64_t sum = 0;
-    for (i = 0; i < n; i++)
+    ThreadData *data = (ThreadData *)param;
+    data->result = 0;
+    for (int64_t i = 0; i < data->n; i++)
     {
-        sum = increment(sum);
+        data->result = increment(data->result);
     }
-    return sum;
+    return 0;
 }
 
 int64_t add_to_number_parallel(int64_t n, int num_threads)
 {
     int64_t i;
     int64_t sum = 0;
-    pthread_t threads[num_threads];
-    int64_t *sums = malloc(num_threads * sizeof(int64_t));
+    HANDLE threads[num_threads];
+    ThreadData *data = malloc(num_threads * sizeof(ThreadData));
     for (i = 0; i < num_threads; i++)
     {
-        sums[i] = 0;
+        data[i].n = n / num_threads;
+        data[i].result = 0;
     }
     for (i = 0; i < num_threads; i++)
     {
-        pthread_create(&threads[i], NULL, add_to_number, (void *)(n / num_threads));
+        threads[i] = CreateThread(NULL, 0, add_to_number, &data[i], 0, NULL);
+        if (threads[i] == NULL)
+        {
+            fprintf(stderr, "Error creating thread %lld\n", i);
+            exit(1);
+        }
     }
+    WaitForMultipleObjects(num_threads, threads, TRUE, INFINITE);
     for (i = 0; i < num_threads; i++)
     {
-        pthread_join(threads[i], (void **)&sums[i]);
+        sum += data[i].result;
+        CloseHandle(threads[i]);
     }
-    for (i = 0; i < num_threads; i++)
-    {
-        sum += sums[i];
-    }
-    free(sums);
+    free(data);
     return sum;
 }
 
 double calculate_execution_time(int64_t digits, int num_threads)
 {
-
-    struct timeval start, end;
-    gettimeofday(&start, NULL);
+    LARGE_INTEGER frequency, start, end;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&start);
     add_to_number_parallel(digits, num_threads);
-    gettimeofday(&end, NULL);
-    double time_taken = end.tv_sec + end.tv_usec / 1e6 -
-                        start.tv_sec - start.tv_usec / 1e6; // in seconds
-    return time_taken;
+    QueryPerformanceCounter(&end);
+    return (double)(end.QuadPart - start.QuadPart) / frequency.QuadPart;
 }
 
 int64_t calculate_score(int64_t digits, double execution_time)
 {
-    int64_t multi_core_score = (digits / execution_time) / 666666 * 1.213;
+    int64_t multi_core_score = (digits / execution_time) / (666666 * 3.5);
     return round(multi_core_score);
 }
 
@@ -146,7 +154,7 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 int main(int argc, char **argv)
 {
-    int64_t digits = 50000000000L;
+    int64_t digits = 150000000000;
     srand(time(NULL));
     int processes;
     char cpu_model[256];
@@ -319,7 +327,7 @@ int main(int argc, char **argv)
     printf("Execution time for %lld digits with single core is %f\n", digits, execution_time_single_core);
     printf("Execution time for %lld digits with %lld cores is %f\n", digits, processes, execution_time_multi_core);
     printf("Single core score for %lld digits is %lld\n", digits, calculate_score(digits, execution_time_single_core));
-    printf("Multi core score for %d digits is %lld\n", digits, calculate_score(digits, execution_time_multi_core));
+    printf("Multi core score for %lld digits is %lld\n", digits, calculate_score(digits, execution_time_multi_core));
     printf("Speedup for %lld digits is %f\n", digits, execution_time_single_core / execution_time_multi_core);
     printf("Efficiency for %lld digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
     printf("CPU utilization for %lld digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
