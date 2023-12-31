@@ -82,10 +82,10 @@ struct ThreadData
     int points_in_circle;
 };
 
-double monte_carlo_pi(long long points)
+double monte_carlo_pi(int64_t points)
 {
-    long long inside_circle = 0;
-    for (long long i = 0; i < points; i++)
+    int64_t inside_circle = 0;
+    for (int i = 0; i < points; i++)
     {
         double x = (double)rand() / RAND_MAX;
         double y = (double)rand() / RAND_MAX;
@@ -98,31 +98,31 @@ double monte_carlo_pi(long long points)
     return inside_circle;
 }
 
-double calculate_pi_with_multiprocessing(long long digits, long long processes)
+double calculate_pi_with_multiprocessing(int64_t digits, int processes)
 {
-    long long points_per_process = digits / processes;
-    long long points_left = digits % processes;
+    int64_t points_per_process = digits / processes;
+    int64_t points_left = digits % processes;
     pthread_t threads[processes];
     struct ThreadData thread_data[processes];
-    for (long long i = 0; i < processes; i++)
+    for (int i = 0; i < processes; i++)
     {
         thread_data[i].thread_id = i;
         thread_data[i].points_in_circle = 0;
         pthread_create(&threads[i], NULL, monte_carlo_pi, points_per_process);
     }
-    for (long long i = 0; i < processes; i++)
+    for (int i = 0; i < processes; i++)
     {
         pthread_join(threads[i], NULL);
     }
-    long long total_points_in_circle = 0;
-    for (long long i = 0; i < processes; i++)
+    int64_t total_points_in_circle = 0;
+    for (int i = 0; i < processes; i++)
     {
         total_points_in_circle += thread_data[i].points_in_circle;
     }
     return total_points_in_circle;
 }
 
-double calculate_execution_time(long long digits, long long num_threads)
+double calculate_execution_time(int64_t digits, int num_threads)
 {
 
     struct timeval start, end;
@@ -136,7 +136,7 @@ double calculate_execution_time(long long digits, long long num_threads)
 
 int64_t calculate_score(int64_t digits, double execution_time)
 {
-    int64_t multi_core_score = (digits / execution_time) / (666 * 58);
+    int64_t multi_core_score = (digits / execution_time) / (666 * 54);
     return round(multi_core_score);
 }
 
