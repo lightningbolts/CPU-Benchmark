@@ -71,6 +71,106 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
             benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
 }
 
+/* Thread function for counting primes */
+void *
+prime_check(void *_args)
+{
+    /* Cast the args to a usable struct type */
+    struct range *args = (struct range *)_args;
+    int64_t iter = 2;
+    int64_t value;
+
+    /* Skip over any numbers < 2, which is the smallest prime */
+    if (args->start < 2)
+        args->start = 2;
+
+    /* Loop from this thread's start to this thread's end */
+    args->count = 0;
+    for (value = args->start; value <= args->end; value++)
+    {
+        /* Trivial and intentionally slow algorithm:
+           Start with iter = 2; see if iter divides the number evenly.
+           If it does, it's not prime.
+           Stop when iter exceeds the square root of value */
+        bool is_prime = true;
+        for (iter = 2; iter * iter <= value && is_prime; iter++)
+            if (value % iter == 0)
+                is_prime = false;
+
+        if (is_prime)
+            args->count++;
+    }
+
+    /* All values in the range have been counted, so exit */
+    pthread_exit(NULL);
+}
+
+int multicore_processing_prime(int64_t digits, int num_threads)
+{
+    pthread_t threads[num_threads];
+    struct range *args[num_threads];
+    int thread;
+
+    /* Count the number of primes smaller than this value: */
+    int64_t number_count = digits;
+
+    /* Specify start and end values, then split based on number of
+       threads */
+    int64_t start = 0;
+    int64_t end = start + number_count;
+    int64_t number_per_thread = number_count / num_threads;
+
+    /* Simplification: make range divide evenly among the threads */
+    // assert(number_count % num_threads == 0);
+
+    /* Assign a start/end value for each thread, then create it */
+    for (thread = 0; thread < num_threads; thread++)
+    {
+        args[thread] = calloc(sizeof(struct range), 1);
+        args[thread]->start = start + (thread * number_per_thread);
+        args[thread]->end =
+            args[thread]->start + number_per_thread - 1;
+        assert(pthread_create(&threads[thread], NULL, prime_check,
+                              args[thread]) == 0);
+    }
+
+    /* All threads are running. Join all to collect the results. */
+    int64_t total_number = 0;
+    for (thread = 0; thread < num_threads; thread++)
+    {
+        pthread_join(threads[thread], NULL);
+        // printf("From %ld to %ld: %ld\n", args[thread]->start,
+        //        args[thread]->end, args[thread]->count);
+        total_number += args[thread]->count;
+        free(args[thread]);
+    }
+
+    /* Display the total number of primes in the specified range. */
+    // printf("===============================================\n");
+    // printf("Total number of primes less than %ld: %ld\n", end,
+    //        total_number);
+
+    return 0;
+}
+
+double calculate_execution_time_prime(int digits, int num_threads)
+{
+
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+    multicore_processing_prime(digits, num_threads);
+    gettimeofday(&end, NULL);
+    double time_taken = end.tv_sec + end.tv_usec / 1e6 -
+                        start.tv_sec - start.tv_usec / 1e6; // in seconds
+    return time_taken;
+}
+
+int calculate_score_prime(int digits, double execution_time)
+{
+    int multi_core_score = (digits / execution_time) / 666;
+    return round(multi_core_score);
+}
+
 double calculate_e_part(int64_t start, int64_t end)
 {
     double result = 0.0;
@@ -127,7 +227,7 @@ double multicore_processing_e(int64_t iterations, int num_threads)
     return total_result;
 }
 
-double calculate_execution_time(int64_t digits, int num_threads)
+double calculate_execution_time_e(int64_t digits, int num_threads)
 {
 
     struct timeval start, end;
@@ -139,7 +239,7 @@ double calculate_execution_time(int64_t digits, int num_threads)
     return time_taken;
 }
 
-int calculate_score(int64_t digits, double execution_time)
+int calculate_score_e(int64_t digits, double execution_time)
 {
     int multi_core_score = (digits / execution_time) / (666 * 377);
     return round(multi_core_score);
@@ -155,7 +255,8 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 int main(int argc, char **argv)
 {
-    int64_t digits = 20000000000L;
+    int64_t digits_e = 20000000000L;
+    int64_t digits_prime = 50000000L;
     srand(time(NULL));
     int processes;
     char cpu_model[256];
@@ -319,19 +420,29 @@ int main(int argc, char **argv)
 
 #endif
 
-    double execution_time_single_core = calculate_execution_time(digits, 1);
-    double execution_time_multi_core = calculate_execution_time(digits, processes);
+    double execution_time_single_core_e = calculate_execution_time_e(digits_e, 1);
+    double execution_time_multi_core_e = calculate_execution_time_e(digits_e, processes);
+    double execution_time_single_core_prime = calculate_execution_time_prime(digits_prime, 1);
+    double execution_time_multi_core_prime = calculate_execution_time_prime(digits_prime, processes);
+    int64_t score_single_core_e = calculate_score_e(digits_e, execution_time_single_core_e);
+    int64_t score_multi_core_e = calculate_score_e(digits_e, execution_time_multi_core_e);
+    int64_t score_single_core_prime = calculate_score_prime(digits_prime, execution_time_single_core_prime);
+    int64_t score_multi_core_prime = calculate_score_prime(digits_prime, execution_time_multi_core_prime);
+    double execution_time_single_core = (execution_time_single_core_e + execution_time_single_core_prime) / 2;
+    double execution_time_multi_core = (execution_time_multi_core_e + execution_time_multi_core_prime) / 2;
+    int64_t score_single_core = (score_single_core_e + score_single_core_prime) / 2;
+    int64_t score_multi_core = (score_multi_core_e + score_multi_core_prime) / 2;
+
     printf("CPU Model%s", model_info);
     printf("\n");
     printf(os_display);
     printf("\n");
-    printf("Execution time for %lld digits with single core is %f\n", digits, execution_time_single_core);
-    printf("Execution time for %lld digits with %lld cores is %f\n", digits, processes, execution_time_multi_core);
-    printf("Single core score for %lld digits is %lld\n", digits, calculate_score(digits, execution_time_single_core));
-    printf("Multi core score for %lld digits is %lld\n", digits, calculate_score(digits, execution_time_multi_core));
-    printf("Speedup for %lld digits is %f\n", digits, execution_time_single_core / execution_time_multi_core);
-    printf("Efficiency for %lld digits is %f\n", digits, (execution_time_single_core / execution_time_multi_core) / processes);
-    printf("CPU utilization for %lld digits is %f%%\n", digits, 100 - (execution_time_multi_core / execution_time_single_core) * 100);
+    printf("Number of cores: %d\n", processes);
+    printf("Single core score: %ld\n", score_single_core);
+    printf("Multi core score: %ld\n", score_multi_core);
+    printf("Speedup: %lf\n", execution_time_single_core / execution_time_multi_core);
+    printf("Efficiency: %lf\n", (execution_time_single_core / execution_time_multi_core) / processes);
+    printf("CPU utilization: %lf\n", 100 - (execution_time_multi_core / execution_time_single_core) * 100);
 
     // Generate 32 digit hex key
     char key[33];
@@ -358,9 +469,9 @@ int main(int argc, char **argv)
     struct prime_benchmark prime_benchmark = {
         cpu_display_model,
         os_display,
-        digits,
-        calculate_score(digits, execution_time_single_core),
-        calculate_score(digits, execution_time_multi_core),
+        digits_prime,
+        score_single_core,
+        score_multi_core,
         execution_time_single_core / execution_time_multi_core,
         (execution_time_single_core / execution_time_multi_core) / processes,
         100 - (execution_time_multi_core / execution_time_single_core) * 100,
@@ -373,110 +484,110 @@ int main(int argc, char **argv)
     primeBenchmarkToJson(prime_benchmark, jsonString);
 
     // Server information
-    // const char *host = "taipan-benchmarks.vercel.app";
-    // const char *path = "/api/cpu-benchmarks";
-    // const int port = 443;
+    const char *host = "taipan-benchmarks.vercel.app";
+    const char *path = "/api/cpu-benchmarks";
+    const int port = 443;
 
-    // // Initialize OpenSSL
-    // SSL_library_init();
-    // SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-    // if (!ctx)
-    // {
-    //     ERR_print_errors_fp(stderr);
-    //     exit(EXIT_FAILURE);
-    // }
+    // Initialize OpenSSL
+    SSL_library_init();
+    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+    if (!ctx)
+    {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
 
-    // // Create a socket
-    // int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    // if (sockfd < 0)
-    // {
-    //     error("Error opening socket");
-    // }
+    // Create a socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        error("Error opening socket");
+    }
 
-    // // Resolve the host IP address
-    // struct hostent *server = gethostbyname(host);
-    // if (server == NULL)
-    // {
-    //     fprintf(stderr, "Error: Could not resolve host %s\n", host);
-    //     exit(EXIT_FAILURE);
-    // }
+    // Resolve the host IP address
+    struct hostent *server = gethostbyname(host);
+    if (server == NULL)
+    {
+        fprintf(stderr, "Error: Could not resolve host %s\n", host);
+        exit(EXIT_FAILURE);
+    }
 
-    // // Set up the server address structure
-    // struct sockaddr_in server_addr;
-    // bzero((char *)&server_addr, sizeof(server_addr));
-    // server_addr.sin_family = AF_INET;
-    // bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
-    // server_addr.sin_port = htons(port);
+    // Set up the server address structure
+    struct sockaddr_in server_addr;
+    bzero((char *)&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    server_addr.sin_port = htons(port);
 
-    // // Connect to the server
-    // if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    // {
-    //     error("Error connecting to server");
-    // }
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        error("Error connecting to server");
+    }
 
-    // // Create an SSL connection
-    // SSL *ssl = SSL_new(ctx);
-    // SSL_set_fd(ssl, sockfd);
-    // if (SSL_connect(ssl) != 1)
-    // {
-    //     ERR_print_errors_fp(stderr);
-    //     exit(EXIT_FAILURE);
-    // }
+    // Create an SSL connection
+    SSL *ssl = SSL_new(ctx);
+    SSL_set_fd(ssl, sockfd);
+    if (SSL_connect(ssl) != 1)
+    {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
 
-    // // JSON object to send
-    // const char *jsonObject = jsonString;
-    // printf("Sending JSON object:\n%s\n", jsonObject);
+    // JSON object to send
+    const char *jsonObject = jsonString;
+    printf("Sending JSON object:\n%s\n", jsonObject);
 
-    // // Build the HTTP request
-    // char request[1024];
-    // snprintf(request, sizeof(request),
-    //          "POST %s HTTP/1.1\r\n"
-    //          "Host: %s\r\n"
-    //          "Content-Type: application/json\r\n"
-    //          "Content-Length: %zu\r\n"
-    //          "\r\n"
-    //          "%s",
-    //          path, host, strlen(jsonObject), jsonObject);
+    // Build the HTTP request
+    char request[1024];
+    snprintf(request, sizeof(request),
+             "POST %s HTTP/1.1\r\n"
+             "Host: %s\r\n"
+             "Content-Type: application/json\r\n"
+             "Content-Length: %zu\r\n"
+             "\r\n"
+             "%s",
+             path, host, strlen(jsonObject), jsonObject);
 
-    // // Send the HTTP request
-    // SSL_write(ssl, request, strlen(request));
+    // Send the HTTP request
+    SSL_write(ssl, request, strlen(request));
 
-    // // Read and print the response
-    // char response[4096];
-    // int bytesRead;
-    // while (1)
-    // {
-    //     bytesRead = SSL_read(ssl, response, sizeof(response));
-    //     if (bytesRead <= 10)
-    //     {
-    //         break;
-    //     }
-    //     printf("%d", bytesRead);
-    //     printf("%.*s", bytesRead, response);
-    // }
+    // Read and print the response
+    char response[4096];
+    int bytesRead;
+    while (1)
+    {
+        bytesRead = SSL_read(ssl, response, sizeof(response));
+        if (bytesRead <= 10)
+        {
+            break;
+        }
+        printf("%d", bytesRead);
+        printf("%.*s", bytesRead, response);
+    }
 
-    // // Get object id from response
-    // char *object_id = strstr(response, "_id");
-    // // Display two urls: one for viewing the benchmark and one for claiming the benchmark
-    // // View benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>
-    // // Claim benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>?key=<key>
-    // char view_benchmark_url[256];
-    // // char claim_benchmark_url[256];
-    // snprintf(view_benchmark_url, sizeof(view_benchmark_url),
-    //          "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s",
-    //          24, object_id + 6);
-    // // snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
-    // //          "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
-    // //          24, object_id + 6, key);
-    // printf("View benchmark url: %s\n", view_benchmark_url);
-    // // printf("Claim benchmark url: %s\n", claim_benchmark_url);
+    // Get object id from response
+    char *object_id = strstr(response, "_id");
+    // Display two urls: one for viewing the benchmark and one for claiming the benchmark
+    // View benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>
+    // Claim benchmark url link: https://taipan-benchmarks.vercel.app/cpu-benchmarks/<object_id>?key=<key>
+    char view_benchmark_url[256];
+    // char claim_benchmark_url[256];
+    snprintf(view_benchmark_url, sizeof(view_benchmark_url),
+             "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s",
+             24, object_id + 6);
+    // snprintf(claim_benchmark_url, sizeof(claim_benchmark_url),
+    //          "https://taipan-benchmarks.vercel.app/cpu-benchmarks/%.*s?key=%s",
+    //          24, object_id + 6, key);
+    printf("View benchmark url: %s\n", view_benchmark_url);
+    // printf("Claim benchmark url: %s\n", claim_benchmark_url);
 
-    // // Close the SSL connection and free resources
-    // SSL_shutdown(ssl);
-    // SSL_free(ssl);
-    // SSL_CTX_free(ctx);
+    // Close the SSL connection and free resources
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+    SSL_CTX_free(ctx);
 
-    // // Close the socket
-    // close(sockfd);
-    // return 0;
+    // Close the socket
+    close(sockfd);
+    return 0;
 }
