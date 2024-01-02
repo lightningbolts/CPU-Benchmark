@@ -76,6 +76,107 @@ void primeBenchmarkToJson(struct prime_benchmark benchmark, char *jsonString)
             benchmark.speedup, benchmark.efficiency, benchmark.cpu_utilization,
             benchmark.time, benchmark.hostname, benchmark.key, benchmark.processes);
 }
+
+/* Thread function for counting primes */
+void *
+prime_check(void *_args)
+{
+    /* Cast the args to a usable struct type */
+    struct range *args = (struct range *)_args;
+    int64_t iter = 2;
+    int64_t value;
+
+    /* Skip over any numbers < 2, which is the smallest prime */
+    if (args->start < 2)
+        args->start = 2;
+
+    /* Loop from this thread's start to this thread's end */
+    args->count = 0;
+    for (value = args->start; value <= args->end; value++)
+    {
+        /* Trivial and intentionally slow algorithm:
+           Start with iter = 2; see if iter divides the number evenly.
+           If it does, it's not prime.
+           Stop when iter exceeds the square root of value */
+        bool is_prime = true;
+        for (iter = 2; iter * iter <= value && is_prime; iter++)
+            if (value % iter == 0)
+                is_prime = false;
+
+        if (is_prime)
+            args->count++;
+    }
+
+    /* All values in the range have been counted, so exit */
+    pthread_exit(NULL);
+}
+
+int multicore_processing_prime(int64_t digits, int num_threads)
+{
+    pthread_t threads[num_threads];
+    struct range *args[num_threads];
+    int thread;
+
+    /* Count the number of primes smaller than this value: */
+    int64_t number_count = digits;
+
+    /* Specify start and end values, then split based on number of
+       threads */
+    int64_t start = 0;
+    int64_t end = start + number_count;
+    int64_t number_per_thread = number_count / num_threads;
+
+    /* Simplification: make range divide evenly among the threads */
+    // assert(number_count % num_threads == 0);
+
+    /* Assign a start/end value for each thread, then create it */
+    for (thread = 0; thread < num_threads; thread++)
+    {
+        args[thread] = calloc(sizeof(struct range), 1);
+        args[thread]->start = start + (thread * number_per_thread);
+        args[thread]->end =
+            args[thread]->start + number_per_thread - 1;
+        assert(pthread_create(&threads[thread], NULL, prime_check,
+                              args[thread]) == 0);
+    }
+
+    /* All threads are running. Join all to collect the results. */
+    int64_t total_number = 0;
+    for (thread = 0; thread < num_threads; thread++)
+    {
+        pthread_join(threads[thread], NULL);
+        // printf("From %ld to %ld: %ld\n", args[thread]->start,
+        //        args[thread]->end, args[thread]->count);
+        total_number += args[thread]->count;
+        free(args[thread]);
+    }
+
+    /* Display the total number of primes in the specified range. */
+    // printf("===============================================\n");
+    // printf("Total number of primes less than %ld: %ld\n", end,
+    //        total_number);
+
+    return 0;
+}
+
+double calculate_execution_time_prime(int digits, int num_threads)
+{
+
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+    multicore_processing_prime(digits, num_threads);
+    gettimeofday(&end, NULL);
+    double time_taken = end.tv_sec + end.tv_usec / 1e6 -
+                        start.tv_sec - start.tv_usec / 1e6; // in seconds
+    return time_taken;
+}
+
+int calculate_score_prime(int digits, double execution_time)
+{
+    int multi_core_score = (digits / execution_time) / 666;
+    return round(multi_core_score);
+}
+
 double calculate_e_part(int64_t start, int64_t end)
 {
     double result = 0.0;
@@ -132,7 +233,7 @@ double multicore_processing_e(int64_t iterations, int num_threads)
     return total_result;
 }
 
-double calculate_execution_time(int64_t digits, int num_threads)
+double calculate_execution_time_e(int64_t digits, int num_threads)
 {
 
     struct timeval start, end;
@@ -144,7 +245,7 @@ double calculate_execution_time(int64_t digits, int num_threads)
     return time_taken;
 }
 
-int calculate_score(int64_t digits, double execution_time)
+int calculate_score_e(int64_t digits, double execution_time)
 {
     int multi_core_score = (digits / execution_time) / (666 * 377 * 1.95);
     return round(multi_core_score);
@@ -160,7 +261,8 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 
 int main(int argc, char **argv)
 {
-    int64_t digits = 40000000000;
+    int64_t digits_e = 40000000000;
+    int64_t digits_prime = 50000000L;
     srand(time(NULL));
     int processes;
     char cpu_model[256];
@@ -324,19 +426,31 @@ int main(int argc, char **argv)
 
 #endif
 
-    double execution_time_single_core = calculate_execution_time(digits, 1);
-    double execution_time_multi_core = calculate_execution_time(digits, processes);
+    double execution_time_single_core_e = calculate_execution_time_e(digits_e, 1);
+    double execution_time_multi_core_e = calculate_execution_time_e(digits_e, processes);
+    double execution_time_single_core_prime = calculate_execution_time_prime(digits_prime, 1);
+    double execution_time_multi_core_prime = calculate_execution_time_prime(digits_prime, processes);
+    int64_t score_single_core_e = calculate_score_e(digits_e, execution_time_single_core_e);
+    int64_t score_multi_core_e = calculate_score_e(digits_e, execution_time_multi_core_e);
+    int64_t score_single_core_prime = calculate_score_prime(digits_prime, execution_time_single_core_prime);
+    int64_t score_multi_core_prime = calculate_score_prime(digits_prime, execution_time_multi_core_prime);
+    double execution_time_single_core = (execution_time_single_core_e + execution_time_single_core_prime) / 2;
+    double execution_time_multi_core = (execution_time_multi_core_e + execution_time_multi_core_prime) / 2;
+    int64_t score_single_core = (score_single_core_e + score_single_core_prime) / 2;
+    int64_t score_multi_core = (score_multi_core_e + score_multi_core_prime) / 2;
+
     printf("CPU Model%s", model_info);
     printf("\n");
     printf(os_display);
     printf("\n");
-    printf("Execution time for single core is %f\n", execution_time_single_core);
-    printf("Execution time for %lld cores is %f\n", processes, execution_time_multi_core);
-    printf("Single core score is %lld\n", calculate_score(digits, execution_time_single_core));
-    printf("Multi core score is %lld\n", calculate_score(digits, execution_time_multi_core));
-    printf("Speedup is %f\n", execution_time_single_core / execution_time_multi_core);
-    printf("Efficiency is %f\n", (execution_time_single_core / execution_time_multi_core) / processes);
-    printf("CPU utilization is %f%%\n", 100 - (execution_time_multi_core / execution_time_single_core) * 100);
+    printf("Number of cores: %d\n", processes);
+    printf("Single core score: %ld\n", score_single_core);
+    printf("Multi core score: %ld\n", score_multi_core);
+    printf("Single core execution time: %lf\n", execution_time_single_core);
+    printf("Multi core execution time: %lf\n", execution_time_multi_core);
+    printf("Speedup: %lf\n", execution_time_single_core / execution_time_multi_core);
+    printf("Efficiency: %lf\n", (execution_time_single_core / execution_time_multi_core) / processes);
+    printf("CPU utilization: %lf\n", 100 - (execution_time_multi_core / execution_time_single_core) * 100);
 
     // Generate 32 digit hex key
     char key[33];
@@ -364,9 +478,9 @@ int main(int argc, char **argv)
     struct prime_benchmark prime_benchmark = {
         cpu_display_model,
         os_display,
-        20000000000L,
-        calculate_score(digits, execution_time_single_core),
-        calculate_score(digits, execution_time_multi_core),
+        digits_prime,
+        score_single_core,
+        score_multi_core,
         execution_time_single_core / execution_time_multi_core,
         (execution_time_single_core / execution_time_multi_core) / processes,
         100 - (execution_time_multi_core / execution_time_single_core) * 100,
@@ -374,7 +488,7 @@ int main(int argc, char **argv)
         hostname,
         key,
         processes};
-
+    
     char jsonString[1024];
     primeBenchmarkToJson(prime_benchmark, jsonString);
 
