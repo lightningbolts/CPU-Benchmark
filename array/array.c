@@ -222,7 +222,7 @@ double calculate_execution_time_sort(int *array, int array_size, int num_threads
 // Calculate score of sorting
 int calculate_score_sort(int *array, int array_size, double execution_time)
 {
-    int multi_core_score = (array_size / execution_time) / (666 * 4.75 * 1.25);
+    int multi_core_score = (array_size / execution_time) / (666 * 4.75 * 1.2);
     return round(multi_core_score);
 }
 
@@ -598,12 +598,17 @@ int main(int argc, char **argv)
     printf("Starting single core...\n");
     double execution_time_single_core = calculate_execution_time_sort(array, ARRAY_SIZE, 1);
     printf("Ending single core...\n");
+    int *array2 = malloc(ARRAY_SIZE * sizeof(int));
+    for (int i = 0; i < ARRAY_SIZE; i++)
+    {
+        array2[i] = rand() % 1000;
+    }
     printf("Starting multi core...\n");
-    double execution_time_multi_core = calculate_execution_time_sort(array, ARRAY_SIZE, processes);
+    double execution_time_multi_core = calculate_execution_time_sort(array2, ARRAY_SIZE, processes);
     printf("Ending multi core...\n");
     printf("Benchmark finished.\n");
     int64_t score_single_core = calculate_score_sort(array, ARRAY_SIZE, execution_time_single_core);
-    int64_t score_multi_core = calculate_score_sort(array, ARRAY_SIZE, execution_time_multi_core);
+    int64_t score_multi_core = calculate_score_sort(array2, ARRAY_SIZE, execution_time_multi_core);
 
     printf("CPU Model%s", model_info);
     printf("\n");

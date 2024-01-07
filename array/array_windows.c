@@ -605,12 +605,17 @@ int main(int argc, char **argv)
     printf("Starting single core...\n");
     double execution_time_single_core = calculate_execution_time_sort(array, ARRAY_SIZE, 1);
     printf("Ending single core...\n");
+    int *array2 = malloc(ARRAY_SIZE * sizeof(int));
+    for (int i = 0; i < ARRAY_SIZE; i++)
+    {
+        array2[i] = rand() % 1000;
+    }
     printf("Starting multi core...\n");
-    double execution_time_multi_core = calculate_execution_time_sort(array, ARRAY_SIZE, processes);
+    double execution_time_multi_core = calculate_execution_time_sort(array2, ARRAY_SIZE, processes);
     printf("Ending multi core...\n");
     printf("Benchmark finished.\n");
     int64_t score_single_core = calculate_score_sort(array, ARRAY_SIZE, execution_time_single_core);
-    int64_t score_multi_core = calculate_score_sort(array, ARRAY_SIZE, execution_time_multi_core);
+    int64_t score_multi_core = calculate_score_sort(array2, ARRAY_SIZE, execution_time_multi_core);
 
     printf("CPU Model%s", model_info);
     printf("\n");
@@ -661,13 +666,13 @@ int main(int argc, char **argv)
         hostname,
         key,
         processes};
-    
+
     char jsonString[1024];
     primeBenchmarkToJson(prime_benchmark, jsonString);
 
     // Server information
-    const char* API_URL = "taipan-benchmarks.vercel.app";
-    const char* API_PATH = "/api/cpu-benchmarks";
+    const char *API_URL = "taipan-benchmarks.vercel.app";
+    const char *API_PATH = "/api/cpu-benchmarks";
     const char *JSON_PAYLOAD = jsonString;
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
